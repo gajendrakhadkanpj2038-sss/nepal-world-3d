@@ -3,140 +3,105 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#123f36" />
   <title>NEPAL WORLD 3D</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; }
-    #game { display: block; width: 100%; height: 100%; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #050d0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; }
+    #game { display: block; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
 
-    /* GTA-Style Loading / Title Screen */
+    /* GTA-Style Splash / Loading Screen */
     #splash-screen {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: radial-gradient(circle at center, #1b382b 0%, #08120e 100%);
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      transition: opacity 1s ease, visibility 1s ease;
+      z-index: 100; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
     }
-    #splash-screen.hidden { opacity: 0; visibility: hidden; }
+    #splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     .gta-title {
-      font-size: clamp(2.5rem, 6vw, 5rem);
-      font-weight: 900;
-      letter-spacing: 4px;
-      color: #dc3545;
-      text-shadow: 0 0 20px rgba(220, 53, 69, 0.6), 3px 3px 0px #000;
-      margin-bottom: 10px;
-      text-transform: uppercase;
+      font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 900; letter-spacing: 4px;
+      color: #dc3545; text-shadow: 0 0 20px rgba(220, 53, 69, 0.6), 3px 3px 0px #000;
+      margin-bottom: 10px; text-transform: uppercase;
     }
     .gta-subtitle {
-      font-size: clamp(1rem, 2.5vw, 1.8rem);
-      font-weight: 700;
-      color: #f8f9fa;
-      letter-spacing: 2px;
-      margin-bottom: 40px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      font-size: clamp(1rem, 2.5vw, 1.8rem); font-weight: 700;
+      color: #f8f9fa; letter-spacing: 2px; margin-bottom: 30px;
     }
     .credits-box {
-      border-top: 2px solid #dc3545;
-      border-bottom: 2px solid #dc3545;
-      padding: 15px 30px;
-      background: rgba(0,0,0,0.4);
-      margin-bottom: 40px;
+      border-top: 2px solid #dc3545; border-bottom: 2px solid #dc3545;
+      padding: 15px 30px; background: rgba(0,0,0,0.4); margin-bottom: 35px;
     }
     .credits-text { font-size: 1.1rem; color: #dae0e5; font-weight: 600; letter-spacing: 1px; }
-    .author-name { color: #ffc107; font-size: 1.3rem; font-weight: 800; }
+    .author-name { color: #ffc107; font-size: 1.3rem; font-weight: 800; margin-top: 5px; }
     
     .start-btn {
-      padding: 14px 40px;
-      font-size: 1.2rem;
-      font-weight: 800;
-      color: #123f36;
-      background: #ffc107;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      box-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
-      transition: transform 0.2s, background 0.2s;
+      padding: 14px 40px; font-size: 1.2rem; font-weight: 800; color: #123f36;
+      background: #ffc107; border: none; border-radius: 50px; cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 193, 7, 0.4); transition: transform 0.2s, background 0.2s;
     }
     .start-btn:hover { transform: scale(1.05); background: #fff; }
 
     /* HUD Controls & Info */
     #hud {
-      position: fixed;
-      top: 15px; left: 15px; right: 15px;
+      position: fixed; top: 15px; left: 15px; right: 15px;
       display: flex; justify-content: space-between; align-items: center;
-      pointer-events: none; z-index: 30;
+      pointer-events: none; z-index: 10;
     }
     .pill {
-      background: rgba(10, 25, 20, 0.85);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: white; padding: 10px 18px; border-radius: 20px;
-      font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      background: rgba(10, 25, 20, 0.85); border: 1px solid rgba(255,255,255,0.15);
+      color: white; padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600;
     }
-
     #quest-tracker {
       position: fixed; top: 70px; left: 15px;
-      background: rgba(12, 20, 18, 0.85);
-      border-left: 4px solid #ffc107;
+      background: rgba(12, 20, 18, 0.85); border-left: 4px solid #ffc107;
       padding: 12px 18px; border-radius: 4px 12px 12px 4px;
-      z-index: 20; max-width: 320px;
+      z-index: 10; max-width: 320px; pointer-events: none;
     }
     #quest-tracker h4 { color: #ffc107; margin-bottom: 5px; font-size: 14px; }
     #quest-tracker p { font-size: 13px; color: #ddd; line-height: 1.4; }
-
     #dialogue-modal {
       position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
       width: 90%; max-width: 600px; background: rgba(15, 23, 20, 0.95);
       border: 2px solid #28a745; padding: 20px; border-radius: 15px;
-      display: none; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      display: none; z-index: 20; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
     }
     #dialogue-title { color: #ffc107; font-size: 1.2rem; margin-bottom: 8px; }
     #dialogue-text { font-size: 1rem; color: #eee; margin-bottom: 15px; line-height: 1.5; }
-    .action-btn {
-      background: #28a745; color: white; border: none;
-      padding: 8px 18px; border-radius: 8px; font-weight: 700; cursor: pointer;
-    }
-
+    .action-btn { background: #28a745; color: white; border: none; padding: 8px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
     #controls-hint {
-      position: fixed; bottom: 15px; right: 15px;
-      background: rgba(0,0,0,0.6); padding: 8px 14px;
-      border-radius: 8px; font-size: 12px; color: #aaa;
+      position: fixed; bottom: 15px; right: 15px; background: rgba(0,0,0,0.6);
+      padding: 8px 14px; border-radius: 8px; font-size: 12px; color: #aaa; pointer-events: none; z-index: 10;
     }
   </style>
-  <!-- Three.js Library & OrbitControls -->
+  
+  <!-- Three.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
-  <!-- Loading / Title Screen -->
+  <!-- GTA Loading Screen -->
   <div id="splash-screen">
     <div class="gta-title">NEPAL WORLD 3D</div>
     <div class="gta-subtitle">REALISTIC MOUNTAIN ADVENTURE</div>
     <div class="credits-box">
       <div class="credits-text">CREATED BY</div>
       <div class="author-name">GAJENDRA KUMAR KHADKA</div>
-      <div class="credits-text" style="font-size: 0.9rem; margin-top:4px;">&</div>
+      <div class="credits-text" style="font-size: 0.9rem; margin-top:6px;">&</div>
       <div class="author-name">SHRIJAN KHADKA</div>
     </div>
-    <button class="start-btn" onclick="startGame()">START GAME</button>
+    <button class="start-btn" onclick="launchGame()">START GAME</button>
   </div>
 
   <canvas id="game"></canvas>
 
   <div id="hud">
     <div class="pill">🇳🇵 बागेश्वरी & नेपालगन्ज भ्याली</div>
-    <div class="pill" id="stats">स्थान: नेपाल</div>
+    <div class="pill">स्थान: नेपाल</div>
   </div>
 
   <div id="quest-tracker">
     <h4 id="q-title">मुख्य मिसन (Main Quest)</h4>
-    <p id="q-desc">बागेश्वरी मन्दिरका मुख्य पुजारी (Panditji) सँग गएर भेट्नुहोस् र आशीर्वाद लिनुहोस्।</p>
+    <p id="q-desc">बागेश्वरी मन्दिरका मुख्य पुजारी (Panditji) सँग भेट्नुहोस् र आशीर्वाद लिनुहोस्।</p>
   </div>
 
   <div id="dialogue-modal">
@@ -145,14 +110,19 @@
     <button class="action-btn" onclick="closeDialogue()">कुराकानी बन्द गर्नुहोस् (E)</button>
   </div>
 
-  <div id="controls-hint">W, A, S, D = हिँड्नुहोस् | Mouse = हेर्नुहोस् | E = Interact</div>
+  <div id="controls-hint">W, A, S, D = हिँड्नुहोस् | E = Interact</div>
 
   <script src="main.js"></script>
   <script>
-    function startGame() {
+    function launchGame() {
       const splash = document.getElementById('splash-screen');
       splash.classList.add('hidden');
-      if(window.initGame) window.initGame();
+      if (typeof window.initGame === 'function') {
+        window.initGame();
+      } else {
+        console.warn("External main.js not found, falling back to embedded engine.");
+        if (typeof startFallbackEngine === 'function') startFallbackEngine();
+      }
     }
   </script>
 </body>
