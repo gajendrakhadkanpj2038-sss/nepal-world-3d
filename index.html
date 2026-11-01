@@ -1,160 +1,219 @@
 <!doctype html>
-<html lang="ne">
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#123f36">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="NEPAL WORLD 3D">
-  <title>NEPAL WORLD 3D — बागेश्वरी</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>NEPAL WORLD 3D</title>
   <style>
-    *{box-sizing:border-box}
-    html,body{
-      margin:0;width:100%;height:100%;overflow:hidden;
-      background:#000;color:#fff;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      touch-action:none;
-    }
-    body{position:relative}
-    #game{
-      display:block;width:100%;height:100%;
-      background:linear-gradient(#80d4ee 0%,#d6f1e4 45%,#88bf69 46%,#447d4a 100%);
-      opacity:0;transition:opacity .6s ease;
-    }
-    #loading-screen{
-      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-      flex-direction:column;gap:20px;background:radial-gradient(circle at 50% 20%,#1a4d45,#071d1a 60%,#020d0b 100%);
-      z-index:20;
-    }
-    .intro-text{
-      text-align:center;line-height:1.6;font-size:clamp(1.3rem,2vw,2.4rem);
-      font-weight:700;letter-spacing:.03em;opacity:0;animation:fadeText 2s ease forwards;
-    }
-    @keyframes fadeText{
-      0%{opacity:0;transform:translateY(12px)}
-      100%{opacity:1;transform:translateY(0)}
-    }
-    #play-btn{
-      border:0;border-radius:999px;padding:16px 32px;background:linear-gradient(#f4d770,#e9b840);
-      color:#152f2a;font-weight:900;font-size:1.08rem;cursor:pointer;
-      box-shadow:0 12px 28px rgba(233,184,64,.35);
-      transition:transform .15s ease,box-shadow .15s ease;
-    }
-    #play-btn:hover{transform:translateY(-2px);box-shadow:0 18px 36px rgba(233,184,64,.45)}
-    #play-btn:active{transform:translateY(0)}
-    #top{
-      position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;
-      opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s ease
-    }
-    .pill{
-      background:rgba(16,44,39,.86);color:#fff;padding:8px 12px;border-radius:14px;
-      font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.22);
-    }
-    #hint{
-      position:fixed;left:50%;top:62px;transform:translateX(-50%);
-      background:rgba(255,255,255,.9);color:#17352d;padding:9px 13px;border-radius:14px;
-      font-size:13px;text-align:center;max-width:90%;box-shadow:0 3px 12px rgba(0,0,0,.15);
-      opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s ease
-    }
-    #controls{
-      position:fixed;bottom:18px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:end;pointer-events:none;
-      opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s ease;
-    }
-    #pad{
-      display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px;gap:5px;pointer-events:auto;
-    }
-    .ctrl{
-      border:1px solid rgba(255,255,255,.7);
-      background:rgba(22,59,54,.85);color:#fff;border-radius:14px;
-      font-size:22px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.2);touch-action:none;
-    }
-    .ctrl:active{background:#e8b84d;color:#18352e}
-    #actions{display:flex;flex-direction:column;gap:8px;pointer-events:auto;align-items:end}
-    .action{
-      border:0;border-radius:15px;padding:12px 15px;background:#fff;color:#17352d;
-      font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.18);
-    }
-    #modal{
-      position:fixed;inset:0;background:rgba(6,28,24,.66);display:none;align-items:center;justify-content:center;padding:20px;z-index:25;
-    }
-    #panel{
-      background:#fff;border-radius:20px;padding:22px;max-width:340px;width:100%;color:#17352d;
-      text-align:center;box-shadow:0 12px 35px rgba(0,0,0,.28);
-    }
-    #panel h2{margin:0 0 8px}
-    #panel p{line-height:1.5}
-    #close{
-      background:#1c6655;color:#fff;border:0;border-radius:12px;padding:11px 22px;font-weight:700;
-    }
-    body.game-ready #top, body.game-ready #hint, body.game-ready #controls{opacity:1;visibility:visible}
-    body.game-ready #game{opacity:1}
-
-    #rotate-overlay{
-      position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.96);
-      color:#fff;z-index:40;flex-direction:column;gap:12px;text-align:center;padding:24px;
-    }
-    #rotate-overlay strong{font-size:2rem}
-    #rotate-overlay span{font-size:1rem;opacity:.8}
-    body.portrait-mode #rotate-overlay{display:flex}
-    body.portrait-mode #loading-screen,
-    body.portrait-mode #game,
-    body.portrait-mode #top,
-    body.portrait-mode #hint,
-    body.portrait-mode #controls,
-    body.portrait-mode #joystick{display:none!important}
-
-    #joystick{
-      position:fixed;left:18px;bottom:22px;width:140px;height:140px;border-radius:50%;display:none;pointer-events:auto;touch-action:none;z-index:15;
-    }
-    #joystick-base{position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.25);box-shadow:inset 0 0 25px rgba(255,255,255,.12)}
-    #joystick-knob{position:absolute;left:50%;top:50%;width:54px;height:54px;border-radius:50%;transform:translate(-50%,-50%);background:linear-gradient(#fff,#dce9ef);box-shadow:0 6px 20px rgba(0,0,0,.22);border:2px solid rgba(12,48,45,.25)}
-    body.mobile #joystick{display:block}
-    body.mobile #pad{display:none}
-    body.mobile #controls{left:0;right:0;padding:0 18px 18px;align-items:flex-end}
-    body.mobile #actions{margin-left:auto}
-
-    #questBanner{
-      position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);
-      background:linear-gradient(135deg,#f6ffb8,#fff7d1,#ffd8a8);
-      color:#153d39;font-weight:900;letter-spacing:.08em;
-      border-radius:20px;padding:22px 34px;font-size:clamp(1.2rem,2.8vw,2.8rem);
-      box-shadow:0 18px 50px rgba(0,0,0,.35);border:2px solid rgba(11,37,31,.18);
-      opacity:0;pointer-events:none;transition:all .35s ease;z-index:30;
-    }
-    #questBanner.show{
-      opacity:1;transform:translate(-50%,-50%) scale(1);
-    }
-    #questBanner.hide{
-      opacity:0;transform:translate(-50%,-50%) scale(.9);
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      touch-action: none;
+      color: white;
     }
 
-    @media (orientation: portrait){
-      #top{top:12px;left:12px;right:12px}
-      #hint{top:58px}
-      #controls{bottom:14px}
+    #game {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(#9adcf0, #dff4f0 42%, #7cbf5a 43%, #366d3d 100%);
     }
-    @media (max-width: 480px){
-      .pill{font-size:11px;padding:7px 10px}
-      #hint{font-size:11px;padding:8px 10px}
-      #actions .action{padding:10px 12px;font-size:14px}
+
+    #hud {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 40;
+    }
+
+    .pill {
+      background: rgba(16, 44, 39, 0.86);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+
+    #hint {
+      position: fixed;
+      left: 50%;
+      top: 68px;
+      transform: translateX(-50%);
+      z-index: 30;
+      background: rgba(255,255,255,0.92);
+      color: #17352d;
+      padding: 9px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      text-align: center;
+      max-width: 90%;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+    }
+
+    #controls {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    #pad {
+      display: grid;
+      grid-template-columns: 48px 48px 48px;
+      grid-template-rows: 48px 48px;
+      gap: 5px;
+      pointer-events: auto;
+    }
+
+    .ctrl {
+      border: 1px solid rgba(255,255,255,.7);
+      background: rgba(22,59,54,.85);
+      color: #fff;
+      border-radius: 14px;
+      font-size: 22px;
+      font-weight: 700;
+      touch-action: none;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+
+    #reset {
+      pointer-events: auto;
+      border: 0;
+      border-radius: 15px;
+      padding: 12px 15px;
+      background: white;
+      color: #17352d;
+      font-weight: 800;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+    }
+
+    #modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.5);
+      z-index: 50;
+    }
+
+    #panel {
+      background: white;
+      color: #17352d;
+      max-width: 380px;
+      width: 100%;
+      padding: 22px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    }
+
+    #panel h2 { margin: 0 0 8px; }
+    #panel p { line-height: 1.6; }
+    #close {
+      border: 0;
+      background: #1c6655;
+      color: white;
+      border-radius: 12px;
+      padding: 11px 22px;
+      font-weight: 700;
+    }
+
+    #questBanner {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: linear-gradient(135deg, #f6ffb8, #fff7d1, #ffd8a8);
+      color: #153d39;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      border-radius: 20px;
+      padding: 22px 34px;
+      font-size: clamp(1.2rem, 2.6vw, 2.4rem);
+      box-shadow: 0 18px 50px rgba(0,0,0,.35);
+      border: 2px solid rgba(11,37,31,.18);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s ease;
+      z-index: 60;
+    }
+
+    #questBanner.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    #questBanner.hide {
+      opacity: 0;
+    }
+
+    #joystick {
+      position: fixed;
+      left: 18px;
+      bottom: 22px;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      display: none;
+      pointer-events: auto;
+      touch-action: none;
+      z-index: 35;
+    }
+
+    #joystick-base {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+      border: 2px solid rgba(255,255,255,.25);
+      box-shadow: inset 0 0 25px rgba(255,255,255,.12);
+    }
+
+    #joystick-knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      transform: translate(-50%,-50%);
+      background: linear-gradient(#fff,#dce9ef);
+      box-shadow: 0 6px 20px rgba(0,0,0,.22);
+      border: 2px solid rgba(12,48,45,.25);
+    }
+
+    body.mobile #joystick { display: block; }
+    body.mobile #pad { display: none; }
+    body.mobile #controls { left: 0; right: 0; padding: 0 18px 18px; align-items: flex-end; }
+    body.mobile #reset { margin-left: auto; }
+
+    @media (max-width: 480px) {
+      .pill { font-size: 11px; padding: 7px 10px; }
+      #hint { font-size: 11px; padding: 8px 10px; }
     }
   </style>
 </head>
 <body>
-  <div id="loading-screen">
-    <div class="intro-text">Made by Gajendra Kumar Khadka<br>and Shrijan Khadka</div>
-    <button id="play-btn">Play</button>
-  </div>
-
-  <div id="rotate-overlay">
-    <strong>Rotate device</strong>
-    <span>Turn your phone to landscape mode to play.</span>
-  </div>
-
   <canvas id="game"></canvas>
 
-  <div id="top">
+  <div id="hud">
     <div class="pill">🇳🇵 बागेश्वरी मन्दिर</div>
     <div class="pill" id="stats">Quest: ०/१</div>
   </div>
@@ -166,9 +225,7 @@
       <div></div><button class="ctrl" data-dir="up">▲</button><div></div>
       <button class="ctrl" data-dir="left">◀</button><button class="ctrl" data-dir="down">▼</button><button class="ctrl" data-dir="right">▶</button>
     </div>
-    <div id="actions">
-      <button class="action" id="reset">फेरि सुरु</button>
-    </div>
+    <button id="reset">फेरि सुरु</button>
   </div>
 
   <div id="joystick" aria-label="mobile joystick">
@@ -187,273 +244,300 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+
     const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
+    const stats = document.getElementById('stats');
+    const modal = document.getElementById('modal');
+    const mtitle = document.getElementById('mtitle');
+    const mtext = document.getElementById('mtext');
+    const questBanner = document.getElementById('questBanner');
     const joystickBase = document.getElementById('joystick-base');
     const joystickKnob = document.getElementById('joystick-knob');
-    const questBanner = document.getElementById('questBanner');
 
-    let W = 0, H = 0;
-    let player = { x: 0, y: 0 };
-    let keys = {};
-    let gameStarted = false;
-    let insideTemple = false;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9ddaf2);
+    scene.fog = new THREE.Fog(0x9ddaf2, 35, 100);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.7, 0.9, 0.15);
+    composer.addPass(bloomPass);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 5.5, 12);
+
+    const clock = new THREE.Clock();
+
+    const input = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false
+    };
+
+    const joystickState = { active: false, x: 0, y: 0 };
+
+    const player = {
+      position: new THREE.Vector3(0, 1.1, 12),
+      direction: new THREE.Vector3(0, 0, -1),
+      speed: 11,
+      yaw: 0,
+      mesh: null
+    };
+
+    const world = {
+      templePos: new THREE.Vector3(0, 0, -14),
+      treePos: new THREE.Vector3(-12, 0, 1),
+      npcPos: new THREE.Vector3(0, 0, -9),
+      boundary: 28,
+      size: 100
+    };
+
     let questStarted = false;
     let hasCoconut = false;
     let questComplete = false;
 
-    const isMobile = window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const world = {
-      temple: { x: 0.68, y: 0.38 },
-      tree: { x: 0.54, y: 0.58 },
-      pujari: { x: 0.68, y: 0.5 }
-    };
-    const joystickState = { active: false, x: 0, y: 0 };
+    function createGround() {
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(120, 120),
+        new THREE.MeshStandardMaterial({ color: 0x6ea85a, roughness: 0.98, metalness: 0.02 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
 
-    if (isMobile) document.body.classList.add('mobile');
+      const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x8d7049, roughness: 1 });
+      const road1 = new THREE.Mesh(new THREE.BoxGeometry(18, 0.12, 8), roadMaterial);
+      road1.position.set(0, 0.06, 0);
+      road1.receiveShadow = true;
+      scene.add(road1);
 
-    function tryLandscapeLock(){
-      if (!isMobile) return;
-      if (screen.orientation && screen.orientation.lock) {
-        try { screen.orientation.lock('landscape'); } catch (e) {}
+      const road2 = new THREE.Mesh(new THREE.BoxGeometry(8, 0.12, 18), roadMaterial);
+      road2.position.set(0, 0.06, -8);
+      road2.receiveShadow = true;
+      scene.add(road2);
+
+      // fields
+      for (let i = 0; i < 18; i++) {
+        const patch = new THREE.Mesh(
+          new THREE.BoxGeometry(4.2, 0.04, 2.2),
+          new THREE.MeshStandardMaterial({ color: 0xd9eea6, roughness: 1 })
+        );
+        patch.position.set(-24 + i * 3, 0.07, 20 + (i % 3) * 2);
+        patch.rotation.y = 0.18;
+        patch.receiveShadow = true;
+        scene.add(patch);
       }
+
+      // little water pond
+      const pond = new THREE.Mesh(
+        new THREE.CircleGeometry(5.5, 32),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x3f9cc9,
+          roughness: 0.15,
+          transmission: 0.2,
+          transparent: true,
+          opacity: 0.9
+        })
+      );
+      pond.rotation.x = -Math.PI / 2;
+      pond.position.set(20, 0.06, 18);
+      scene.add(pond);
     }
 
-    function updateOrientationState(){
-      const portrait = window.innerHeight > window.innerWidth;
-      document.body.classList.toggle('portrait-mode', portrait && isMobile);
-    }
+    function createTemple() {
+      const group = new THREE.Group();
 
-    window.addEventListener('resize', () => {
-      updateOrientationState();
-      tryLandscapeLock();
-    });
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(12, 2.8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xd9b15d, roughness: 0.75 })
+      );
+      base.position.y = 1.4;
+      base.castShadow = true;
+      base.receiveShadow = true;
+      group.add(base);
 
-    function resize(){
-      W = canvas.width = innerWidth * devicePixelRatio;
-      H = canvas.height = innerHeight * devicePixelRatio;
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      W = innerWidth;
-      H = innerHeight;
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(7.8, 3.6, 4),
+        new THREE.MeshStandardMaterial({ color: 0xb94d39, roughness: 0.7, metalness: 0.1 })
+      );
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = 4.8;
+      roof.castShadow = true;
+      group.add(roof);
 
-      if (!player.x) player.x = W * 0.48;
-      if (!player.y) player.y = H * 0.57;
-    }
-    addEventListener('resize', resize);
+      const inner = new THREE.Mesh(
+        new THREE.BoxGeometry(6.6, 4.4, 4.6),
+        new THREE.MeshStandardMaterial({ color: 0xf5e7c8, roughness: 0.8 })
+      );
+      inner.position.y = 3.0;
+      group.add(inner);
 
-    function poly(points, fill, stroke){
-      ctx.beginPath();
-      points.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      if (stroke) {
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-    }
+      const topDome = new THREE.Mesh(
+        new THREE.SphereGeometry(2.2, 24, 24),
+        new THREE.MeshPhysicalMaterial({
+          color: 0xf7d770,
+          emissive: 0x2a1800,
+          roughness: 0.5,
+          metalness: 0.1
+        })
+      );
+      topDome.position.y = 7.6;
+      group.add(topDome);
 
-    function ellipse(x, y, rx, ry, c){
-      ctx.beginPath();
-      ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-      ctx.fillStyle = c;
-      ctx.fill();
-    }
-
-    function tree(x, y, s = 1){
-      ellipse(x, y + 15 * s, 13 * s, 5 * s, '#315e38');
-      poly([[x, y - 35 * s], [x - 17 * s, y + 3 * s], [x + 17 * s, y + 3 * s]], '#287a43');
-      poly([[x, y - 22 * s], [x - 14 * s, y + 12 * s], [x + 14 * s, y + 12 * s]], '#399653');
-
-      ellipse(x - 8 * s, y - 12 * s, 5 * s, 7 * s, '#f4de8a');
-      ellipse(x + 9 * s, y - 15 * s, 5 * s, 7 * s, '#f4de8a');
-      ellipse(x + 2 * s, y - 22 * s, 4 * s, 6 * s, '#f4de8a');
-    }
-
-    function house(x, y, s = 1){
-      poly([[x - 32 * s, y], [x, y - 25 * s], [x + 32 * s, y], [x + 32 * s, y + 32 * s], [x - 32 * s, y + 32 * s]], '#e8c99b', '#76533a');
-      poly([[x - 38 * s, y], [x, y - 34 * s], [x + 38 * s, y]], '#9c4935', '#63362d');
-      ctx.fillStyle = '#543b2c';
-      ctx.fillRect(x - 10 * s, y + 10 * s, 20 * s, 18 * s);
-      ctx.fillStyle = '#f4e3b0';
-      ctx.fillRect(x - 6 * s, y + 18 * s, 12 * s, 4 * s);
-    }
-
-    function bageshworiTemple(x, y, s = 1){
-      poly([[x - 42 * s, y + 12 * s], [x + 42 * s, y + 12 * s], [x + 34 * s, y + 42 * s], [x - 34 * s, y + 42 * s]], '#d9b15d', '#876130');
-      poly([[x - 36 * s, y + 12 * s], [x, y - 18 * s], [x + 36 * s, y + 12 * s]], '#b94d39', '#7b3128');
-      poly([[x - 26 * s, y + 12 * s], [x, y - 10 * s], [x + 26 * s, y + 12 * s]], '#dfd28a', '#8b6b35');
-      poly([[x - 16 * s, y + 12 * s], [x + 16 * s, y + 12 * s], [x + 12 * s, y + 30 * s], [x - 12 * s, y + 30 * s]], '#f7ebc6', '#947a3d');
-
-      poly([[x - 50 * s, y + 40 * s], [x - 30 * s, y + 40 * s], [x - 30 * s, y + 52 * s], [x - 50 * s, y + 52 * s]], '#b7872c');
-      poly([[x + 30 * s, y + 40 * s], [x + 50 * s, y + 40 * s], [x + 50 * s, y + 52 * s], [x + 30 * s, y + 52 * s]], '#b7872c');
-
-      poly([[x - 10 * s, y + 44 * s], [x + 10 * s, y + 44 * s], [x + 10 * s, y + 58 * s], [x - 10 * s, y + 58 * s]], '#d6a64b');
-      poly([[x - 22 * s, y + 18 * s], [x - 12 * s, y + 18 * s], [x - 12 * s, y + 34 * s], [x - 22 * s, y + 34 * s]], '#e4d7a2');
-      poly([[x + 12 * s, y + 18 * s], [x + 22 * s, y + 18 * s], [x + 22 * s, y + 34 * s], [x + 12 * s, y + 34 * s]], '#e4d7a2');
-    }
-
-    function drawPujari(x, y){
-      ellipse(x, y + 16, 11, 5, 'rgba(29,47,43,0.55)');
-      ctx.fillStyle = '#f6d4a8';
-      ctx.beginPath();
-      ctx.ellipse(x, y - 11, 8, 9, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#2d1d1d';
-      ctx.fillRect(x - 6, y + 2, 12, 16);
-      ctx.fillRect(x - 10, y + 16, 6, 12);
-      ctx.fillRect(x + 4, y + 16, 6, 12);
-
-      ctx.fillStyle = '#f6d4a8';
-      ctx.beginPath();
-      ctx.arc(x, y - 14, 8, Math.PI, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#b8874c';
-      ctx.fillRect(x - 5, y - 18, 10, 5);
-      ctx.fillStyle = '#2d1d1d';
-      ctx.fillRect(x - 5, y - 24, 10, 4);
-    }
-
-    function drawCoconut(x, y){
-      ellipse(x, y, 7, 8, '#d4a45a');
-      ellipse(x, y - 5, 5, 5, '#a86b2b');
-    }
-
-    function label(t, x, y){
-      ctx.font = 'bold 12px system-ui';
-      let m = ctx.measureText(t).width;
-      ctx.fillStyle = '#fffE';
-      ctx.fillRect(x - m / 2 - 6, y - 14, m + 12, 20);
-      ctx.fillStyle = '#193a2f';
-      ctx.textAlign = 'center';
-      ctx.fillText(t, x, y);
-      ctx.textAlign = 'left';
-    }
-
-    function drawPlayer(x, y){
-      ellipse(x, y + 17, 13, 5, 'rgba(35,69,45,0.55)');
-      ctx.fillStyle = '#2b527f';
-      ctx.fillRect(x - 8, y - 5, 16, 19);
-      ctx.fillStyle = '#e6a879';
-      ctx.beginPath();
-      ctx.ellipse(x, y - 13, 8, 9, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#272421';
-      ctx.beginPath();
-      ctx.arc(x, y - 17, 8, Math.PI, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#202b32';
-      ctx.fillRect(x - 7, y + 13, 5, 8);
-      ctx.fillRect(x + 2, y + 13, 5, 8);
-    }
-
-    function drawTempleInterior(){
-      ctx.clearRect(0, 0, W, H);
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#d1b07f');
-      g.addColorStop(1, '#8a5d2f');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.fillStyle = '#d8b278';
-      ctx.fillRect(0, H * 0.68, W, H * 0.32);
-
-      ctx.fillStyle = '#c48d42';
-      ctx.fillRect(W * 0.18, H * 0.2, W * 0.64, H * 0.1);
-      ctx.fillStyle = '#f3e6c4';
-      ctx.fillRect(W * 0.25, H * 0.28, W * 0.5, H * 0.12);
-
-      ctx.fillStyle = '#9f6952';
-      ctx.fillRect(W * 0.45, H * 0.3, W * 0.1, H * 0.22);
-
-      ctx.fillStyle = '#7a4a31';
-      ctx.fillRect(W * 0.18, H * 0.68, W * 0.64, 16);
-      ctx.fillStyle = '#b87e42';
-      ctx.fillRect(W * 0.35, H * 0.38, W * 0.3, H * 0.2);
-      ctx.fillStyle = '#8d4d32';
-      ctx.fillRect(W * 0.41, H * 0.42, W * 0.18, H * 0.15);
-
-      drawPujari(W * 0.5, H * 0.52);
-      drawPlayer(player.x, player.y);
-    }
-
-    function drawWorld(){
-      ctx.clearRect(0, 0, W, H);
-
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#86d5ed');
-      g.addColorStop(0.48, '#d7f0df');
-      g.addColorStop(0.49, '#85bd68');
-      g.addColorStop(1, '#397c48');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-
-      poly([[0, H * 0.48], [W * 0.15, H * 0.25], [W * 0.32, H * 0.47], [W * 0.48, H * 0.19], [W * 0.72, H * 0.48], [W * 0.88, H * 0.28], [W, H * 0.47]], '#7da9a0');
-      poly([[W * 0.08, H * 0.36], [W * 0.15, H * 0.25], [W * 0.22, H * 0.36], [W * 0.17, H * 0.33], [W * 0.14, H * 0.37]], '#f2f5ed');
-      poly([[W * 0.42, H * 0.31], [W * 0.48, H * 0.19], [W * 0.55, H * 0.33], [W * 0.49, H * 0.29]], '#f5f5eb');
-
-      poly([[W * 0.44, H * 0.47], [W * 0.55, H * 0.47], [W * 0.85, H * 0.95], [W * 0.55, H * 0.95]], '#c6aa78');
-      poly([[W * 0.44, H * 0.47], [W * 0.53, H * 0.47], [W * 0.29, H * 0.95], [W * 0.14, H * 0.95]], '#c6aa78');
-
-      ellipse(W * 0.28, H * 0.65, W * 0.17, H * 0.075, '#347fa0');
-      ellipse(W * 0.28, H * 0.65, W * 0.145, H * 0.055, '#5cb4cf');
       for (let i = 0; i < 4; i++) {
-        ctx.strokeStyle = '#b9e8ed88';
-        ctx.beginPath();
-        ctx.arc(W * 0.28, H * 0.65, 12 + i * 9, 0, Math.PI);
-        ctx.stroke();
+        const p = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.5, 0.5, 3.8, 12),
+          new THREE.MeshStandardMaterial({ color: 0x8d6830, roughness: 0.9 })
+        );
+        const x = i < 2 ? -3.2 : 3.2;
+        const z = i % 2 === 0 ? -2.7 : 2.7;
+        p.position.set(x, 1.8, z);
+        p.castShadow = true;
+        group.add(p);
       }
 
-      bageshworiTemple(W * 0.68, H * 0.4, 1);
-      tree(W * 0.54, H * 0.56, 1.2);
-      house(W * 0.78, H * 0.7, .85);
-      house(W * 0.16, H * 0.75, .72);
-
-      tree(W * 0.08, H * 0.56, .85);
-      tree(W * 0.9, H * 0.52, 1);
-      tree(W * 0.53, H * 0.7, .8);
-      tree(W * 0.37, H * 0.42, .65);
-
-      for (let i = 0; i < 5; i++) {
-        ctx.strokeStyle = '#d5e69a77';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(W * 0.02, H * (0.84 + i * 0.025));
-        ctx.lineTo(W * 0.3, H * (0.78 + i * 0.03));
-        ctx.stroke();
-      }
-
-      label('बागेश्वरी मन्दिर', W * 0.68, H * 0.32);
-      label('पोखरी', W * 0.28, H * 0.55);
-      label('गाउँ', W * 0.77, H * 0.78);
-
-      if (hasCoconut) drawCoconut(W * 0.55, H * 0.62);
-
-      drawPlayer(player.x, player.y);
+      group.position.copy(world.templePos);
+      scene.add(group);
     }
 
-    function draw(){
-      if (insideTemple) drawTempleInterior();
-      else drawWorld();
+    function createTree(x, z, scale = 1) {
+      const group = new THREE.Group();
+
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.7 * scale, 0.9 * scale, 5 * scale, 12),
+        new THREE.MeshStandardMaterial({ color: 0x7a4d2b, roughness: 1 })
+      );
+      trunk.position.y = 2.5 * scale;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      group.add(trunk);
+
+      const leavesMat = new THREE.MeshStandardMaterial({ color: 0x2e8f47, roughness: 1 });
+      const leaf1 = new THREE.Mesh(new THREE.SphereGeometry(2.8 * scale, 20, 20), leavesMat);
+      leaf1.position.set(0, 5.5 * scale, 0);
+      leaf1.castShadow = true;
+      group.add(leaf1);
+
+      const leaf2 = new THREE.Mesh(new THREE.SphereGeometry(2.3 * scale, 20, 20), leavesMat);
+      leaf2.position.set(1.4 * scale, 6.5 * scale, 0.5 * scale);
+      leaf2.castShadow = true;
+      group.add(leaf2);
+
+      const leaf3 = new THREE.Mesh(new THREE.SphereGeometry(2.2 * scale, 20, 20), leavesMat);
+      leaf3.position.set(-1.6 * scale, 6.2 * scale, -0.8 * scale);
+      leaf3.castShadow = true;
+      group.add(leaf3);
+
+      group.position.set(x, 0, z);
+      scene.add(group);
+      return group;
     }
 
-    function nearbyTemple(){
-      return Math.hypot(player.x - W * world.temple.x, player.y - H * world.temple.y) < 70;
+    function createNPC() {
+      const group = new THREE.Group();
+
+      const body = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.8, 2.2, 8, 16),
+        new THREE.MeshStandardMaterial({ color: 0x2d3e52, roughness: 0.8 })
+      );
+      body.position.y = 2.2;
+      body.castShadow = true;
+      group.add(body);
+
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.7, 18, 18),
+        new THREE.MeshStandardMaterial({ color: 0xf0c89a, roughness: 0.9 })
+      );
+      head.position.y = 4.1;
+      head.castShadow = true;
+      group.add(head);
+
+      const robe = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 1.35, 0.75),
+        new THREE.MeshStandardMaterial({ color: 0xb87f3e, roughness: 0.8 })
+      );
+      robe.position.y = 2.5;
+      group.add(robe);
+
+      const shoes = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 0.4, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x1d1d1d })
+      );
+      shoes.position.set(0, 0.8, 0.2);
+      group.add(shoes);
+
+      group.position.copy(world.npcPos);
+      scene.add(group);
+      return group;
     }
 
-    function nearbyTree(){
-      return Math.hypot(player.x - W * world.tree.x, player.y - H * world.tree.y) < 70;
+    function createPlayerMesh() {
+      const body = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.8, 2.2, 8, 16),
+        new THREE.MeshStandardMaterial({ color: 0x2e5d9f, roughness: 0.7, metalness: 0.15 })
+      );
+      body.position.copy(player.position);
+      body.castShadow = true;
+      player.mesh = body;
+      scene.add(body);
     }
 
-    function nearbyPujari(){
-      return Math.hypot(player.x - W * world.pujari.x, player.y - H * world.pujari.y) < 60;
+    function createCoconut() {
+      coconut.position.set(world.treePos.x, 7.2, world.treePos.z + 0.7);
+      coconut.castShadow = true;
+      coconut.material = new THREE.MeshStandardMaterial({
+        color: 0x9a5b2d,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+      scene.add(coconut);
     }
 
-    function showBanner(text){
+    function addLights() {
+      const hemi = new THREE.HemisphereLight(0xe1f8ff, 0x4e7a44, 1.2);
+      scene.add(hemi);
+
+      const sun = new THREE.DirectionalLight(0xfff5d6, 1.4);
+      sun.position.set(30, 32, 18);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.left = -35;
+      sun.shadow.camera.right = 35;
+      sun.shadow.camera.top = 35;
+      sun.shadow.camera.bottom = -35;
+      scene.add(sun);
+
+      const fill = new THREE.PointLight(0xfff3d0, 0.8, 60, 2);
+      fill.position.set(-10, 12, -8);
+      scene.add(fill);
+    }
+
+    function setQuestStatus() {
+      stats.textContent = questComplete ? 'Quest: १/१' : 'Quest: ०/१';
+    }
+
+    function showModal(title, text) {
+      mtitle.textContent = title;
+      mtext.textContent = text;
+      modal.style.display = 'flex';
+    }
+
+    function showBanner(text) {
       questBanner.textContent = text;
       questBanner.classList.remove('hide');
       questBanner.classList.add('show');
@@ -464,104 +548,133 @@
       }, 1800);
     }
 
-    function show(title, text){
-      document.getElementById('mtitle').textContent = title;
-      document.getElementById('mtext').textContent = text;
-      document.getElementById('modal').style.display = 'flex';
+    function distance2D(a, b) {
+      return Math.hypot(a.x - b.x, a.z - b.z);
     }
 
-    function updateStats(){
-      const v = questComplete ? 1 : 0;
-      document.getElementById('stats').textContent = `Quest: ${v}/१`;
-    }
+    function action() {
+      const distToNpc = distance2D(player.position, world.npcPos);
+      const distToTree = distance2D(player.position, world.treePos);
 
-    function action(){
-      if (insideTemple) {
-        if (nearbyPujari()) {
-          if (!questStarted) {
-            questStarted = true;
-            show('पजारी', 'नमस्कार! बागेश्वरी मन्दिरको लागि एउटा ताजा नारिकेल ल्याउनुहोस्। बाहिरको बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
-            return;
-          }
-          if (hasCoconut && !questComplete) {
-            questComplete = true;
-            showBanner('Quest Complete');
-            show('पजारी', 'धन्यवाद! तपाईंले नारिकेल ल्याए। मन्दिरको आशीर्वाद तपाईंको लागि छ।');
-            updateStats();
-            return;
-          }
-          if (!hasCoconut) {
-            show('पजारी', 'तपाईंले अझै नारिकेल ल्याउनु भएको छैन। बाहिरको बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
-            return;
-          }
-          if (questComplete) {
-            show('पजारी', 'तपाईंले काम पूरा गर्नुभयो। मन्दिरमा शान्ति र आशीर्वाद छ।');
-            return;
-          }
-        } else {
-          insideTemple = false;
-          player.x = W * 0.52;
-          player.y = H * 0.62;
-          show('बाहिर', 'तपाईं मन्दिरबाट बाहिर निस्किए।');
+      if (distToNpc < 3.5) {
+        if (!questStarted) {
+          questStarted = true;
+          showModal('पजारी', 'नमस्कार! बागेश्वरी मन्दिरको लागि एउटा ताजा नारिकेल ल्याउनुहोस्। बाहिरको बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
           return;
         }
-        return;
+
+        if (hasCoconut && !questComplete) {
+          questComplete = true;
+          showBanner('Quest Complete');
+          showModal('पजारी', 'धन्यवाद! तपाईंले नारिकेल ल्याए। मन्दिरको आशीर्वाद तपाईंको लागि छ।');
+          setQuestStatus();
+          return;
+        }
+
+        if (!hasCoconut) {
+          showModal('पजारी', 'तपाईंले अझै नारिकेल ल्याउनु भएको छैन। बाहिरको बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
+          return;
+        }
       }
 
-      if (nearbyTemple()) {
-        insideTemple = true;
-        player.x = W * 0.5;
-        player.y = H * 0.58;
-        show('बागेश्वरी मन्दिर', 'तपाईं मन्दिर भित्र प्रवेश गर्नुभयो। पजारीलाई भेट्नुहोस्।');
-        return;
-      }
-
-      if (nearbyTree()) {
+      if (distToTree < 4.5) {
         if (!hasCoconut) {
           hasCoconut = true;
-          show('काँडाबिरुवा', 'तपाईंले बोटमा चढ़ेर एक ताजा नारिकेल उठाउनुभयो। अब पजारीलाई ल्याउनुहोस्।');
+          coconut.visible = false;
+          showModal('बोट', 'तपाईंले एक ताजा नारिकेल उठाउनुभयो। अब पजारीलाई ल्याउनुहोस्।');
           return;
         }
-        show('काँडाबिरुवा', 'तपाईंले पहिले नै नारिकेल लिएर जानुभएको छ। अब पजारीलाई पुर्याउनुहोस्।');
+        showModal('बोट', 'तपाईंले पहिले नै नारिकेल लिएर जानुभएको छ। पजारीलाई पुर्याउनुहोस्।');
         return;
       }
 
-      if (!questStarted) {
-        show('राजमार्ग', 'बागेश्वरी मन्दिरमा जानुहोस्। बाहिरको बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
+      const distToTemple = distance2D(player.position, world.templePos);
+      if (distToTemple < 5) {
+        showModal('बागेश्वरी मन्दिर', 'मन्दिरको शान्ति र पजारीलाई भेट्नुहोस्।');
       } else {
-        show('काम बाँकी', 'तपाईंले पजारीलाई नारिकेल ल्याउनु बाँकी छ।');
+        showModal('मन्दिरको बाहिर', 'बागेश्वरी मन्दिरमा जानुहोस्। बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
       }
     }
 
-    document.getElementById('close').onclick = () => {
-      document.getElementById('modal').style.display = 'none';
-    };
-
-    document.getElementById('reset').onclick = () => {
-      player.x = W * 0.48;
-      player.y = H * 0.57;
-      insideTemple = false;
+    function resetGame() {
+      player.position.set(0, 1.1, 12);
+      player.yaw = 0;
       questStarted = false;
       hasCoconut = false;
       questComplete = false;
-      updateStats();
-      draw();
-    };
-
-    document.querySelectorAll('[data-dir]').forEach((b) => {
-      const d = b.dataset.dir;
-      b.addEventListener('pointerdown', e => { e.preventDefault(); keys[d] = true; });
-      ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, () => keys[d] = false));
-    });
-
-    function resetJoystick(){
-      joystickState.active = false;
-      joystickState.x = 0;
-      joystickState.y = 0;
-      joystickKnob.style.transform = 'translate(-50%,-50%)';
+      coconut.visible = true;
+      setQuestStatus();
     }
 
-    function updateJoystick(clientX, clientY){
+    function setupControls() {
+      document.querySelectorAll('[data-dir]').forEach((button) => {
+        const dir = button.dataset.dir;
+        const setDir = (down) => {
+          if (dir === 'up') input.forward = down;
+          if (dir === 'down') input.backward = down;
+          if (dir === 'left') input.left = down;
+          if (dir === 'right') input.right = down;
+        };
+
+        button.addEventListener('pointerdown', (e) => { e.preventDefault(); setDir(true); });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => {
+          button.addEventListener(ev, () => setDir(false));
+        });
+      });
+
+      window.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+
+        if (k === 'e') {
+          action();
+          e.preventDefault();
+          return;
+        }
+
+        if (k === 'w' || k === 'arrowup') input.forward = true;
+        if (k === 's' || k === 'arrowdown') input.backward = true;
+        if (k === 'a' || k === 'arrowleft') input.left = true;
+        if (k === 'd' || k === 'arrowright') input.right = true;
+
+        if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
+          e.preventDefault();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'w' || k === 'arrowup') input.forward = false;
+        if (k === 's' || k === 'arrowdown') input.backward = false;
+        if (k === 'a' || k === 'arrowleft') input.left = false;
+        if (k === 'd' || k === 'arrowright') input.right = false;
+      });
+
+      document.getElementById('reset').addEventListener('click', resetGame);
+      document.getElementById('close').addEventListener('click', () => { modal.style.display = 'none'; });
+
+      joystickBase.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        joystickState.active = true;
+        joystickBase.setPointerCapture(e.pointerId);
+        updateJoystick(e.clientX, e.clientY);
+      });
+
+      joystickBase.addEventListener('pointermove', (e) => {
+        if (!joystickState.active) return;
+        updateJoystick(e.clientX, e.clientY);
+      });
+
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach((eventName) => {
+        joystickBase.addEventListener(eventName, () => {
+          joystickState.active = false;
+          joystickState.x = 0;
+          joystickState.y = 0;
+          joystickKnob.style.transform = 'translate(-50%,-50%)';
+        });
+      });
+    }
+
+    function updateJoystick(clientX, clientY) {
       const rect = joystickBase.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
@@ -580,109 +693,91 @@
       joystickKnob.style.transform = `translate(${dx}px,${dy}px)`;
     }
 
-    joystickBase.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      joystickState.active = true;
-      joystickBase.setPointerCapture(e.pointerId);
-      updateJoystick(e.clientX, e.clientY);
-    });
+    function updatePlayer(delta) {
+      let moveX = 0;
+      let moveZ = 0;
 
-    joystickBase.addEventListener('pointermove', e => {
-      if (!joystickState.active) return;
-      updateJoystick(e.clientX, e.clientY);
-    });
-
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => {
-      joystickBase.addEventListener(ev, () => resetJoystick());
-    });
-
-    function getMoveVector(){
-      let x = 0, y = 0;
-      if (keys.left) x -= 1;
-      if (keys.right) x += 1;
-      if (keys.up) y -= 1;
-      if (keys.down) y += 1;
+      if (input.forward) moveZ -= 1;
+      if (input.backward) moveZ += 1;
+      if (input.left) moveX -= 1;
+      if (input.right) moveX += 1;
 
       if (joystickState.active) {
-        x += joystickState.x;
-        y += joystickState.y;
+        moveX += joystickState.x;
+        moveZ += joystickState.y;
       }
 
-      return { x, y };
+      const len = Math.hypot(moveX, moveZ);
+      if (len > 0) {
+        moveX /= len;
+        moveZ /= len;
+      }
+
+      player.position.x += moveX * player.speed * delta;
+      player.position.z += moveZ * player.speed * delta;
+
+      player.position.x = THREE.MathUtils.clamp(player.position.x, -world.boundary, world.boundary);
+      player.position.z = THREE.MathUtils.clamp(player.position.z, -world.boundary, world.boundary);
+
+      if (len > 0.01) {
+        player.direction.set(moveX, 0, moveZ).normalize();
+        player.yaw = Math.atan2(player.direction.x, player.direction.z) + Math.PI;
+      }
+
+      player.mesh.position.copy(player.position);
+      player.mesh.rotation.y = player.yaw;
     }
 
-    function startGame(){
-      if (gameStarted) return;
-      gameStarted = true;
-      document.body.classList.add('game-ready');
-      document.getElementById('loading-screen').style.display = 'none';
-      updateStats();
-      requestAnimationFrame(loop);
+    function updateCamera() {
+      const offset = new THREE.Vector3(
+        Math.sin(player.yaw) * 8.5,
+        4.8,
+        Math.cos(player.yaw) * 8.5
+      );
+
+      const desiredPos = player.position.clone().add(offset);
+      camera.position.lerp(desiredPos, 0.08);
+
+      const lookTarget = player.position.clone().add(new THREE.Vector3(0, 2.0, 0));
+      camera.lookAt(lookTarget);
     }
 
-    document.getElementById('play-btn').addEventListener('click', startGame);
+    function init() {
+      createGround();
+      createTemple();
+      createTree(world.treePos.x, world.treePos.z, 1.15);
+      createNPC();
+      createPlayerMesh();
+      createCoconut();
+      addLights();
+      setQuestStatus();
 
-    window.addEventListener('keydown', function(e){
-      const k = e.key.toLowerCase();
+      const isMobileDevice = window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobileDevice) document.body.classList.add('mobile');
 
-      if (k === 'e') {
-        action();
-        e.preventDefault();
-        return;
-      }
+      setupControls();
 
-      if (!gameStarted && (k === 'enter' || k === ' ')) {
-        startGame();
-        e.preventDefault();
-        return;
-      }
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+      });
 
-      if (k === 'w' || k === 'arrowup') keys.up = true;
-      if (k === 's' || k === 'arrowdown') keys.down = true;
-      if (k === 'a' || k === 'arrowleft') keys.left = true;
-      if (k === 'd' || k === 'arrowright') keys.right = true;
-
-      if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
-        e.preventDefault();
-      }
-    });
-
-    window.addEventListener('keyup', function(e){
-      const k = e.key.toLowerCase();
-      if (k === 'w' || k === 'arrowup') keys.up = false;
-      if (k === 's' || k === 'arrowdown') keys.down = false;
-      if (k === 'a' || k === 'arrowleft') keys.left = false;
-      if (k === 'd' || k === 'arrowright') keys.right = false;
-    });
-
-    function loop(){
-      if (!gameStarted) {
-        draw();
-        return;
-      }
-
-      const move = getMoveVector();
-      const speed = 2.6;
-
-      player.x += move.x * speed;
-      player.y += move.y * speed;
-
-      if (insideTemple) {
-        player.x = Math.max(W * 0.25, Math.min(W * 0.75, player.x));
-        player.y = Math.max(H * 0.44, Math.min(H * 0.78, player.y));
-      } else {
-        player.x = Math.max(18, Math.min(W - 18, player.x));
-        player.y = Math.max(18, Math.min(H - 18, player.y));
-      }
-
-      draw();
-      requestAnimationFrame(loop);
+      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(bloomPass);
     }
 
-    updateOrientationState();
-    tryLandscapeLock();
-    resize();
-    draw();
+    function animate() {
+      const delta = clock.getDelta();
+      updatePlayer(delta);
+      updateCamera();
+      composer.render();
+      requestAnimationFrame(animate);
+    }
+
+    init();
+    animate();
   </script>
 </body>
 </html>
