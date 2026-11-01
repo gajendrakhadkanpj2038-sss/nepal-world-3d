@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#123f36"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="NEPAL WORLD 3D"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#123f36"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Nepal World 3D">
 <title>NEPAL WORLD 3D — गाउँ डेमो</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8fd0e8;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
 #game{display:block;width:100%;height:100%;background:linear-gradient(#8fd7ef 0%,#c6eddf 48%,#77b85f 49%,#478c49 100%)}
 #top{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
 .pill{background:#102c27dd;color:white;padding:8px 12px;border-radius:14px;font-size:13px;box-shadow:0 3px 10px #0003}
-#hint{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:#fffE;color:#17352d;padding:9px 13px;border-radius:14px;font-size:13px;text-align:center;max-width:90%;box-shadow:0 3px 12px #0002}
+#hint{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:#fffE;color:#17352d;padding:9px 13px;border-radius:14px;font-size:13px;text-align:center;max-width:90%;box-shadow:0 3px 12px #0003}
 #controls{position:fixed;bottom:18px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:end;pointer-events:none}
 #pad{display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px;gap:5px;pointer-events:auto}
 .ctrl{border:1px solid #ffffff99;background:#163b36cc;color:white;border-radius:14px;font-size:22px;font-weight:700;box-shadow:0 3px 8px #0003;touch-action:none}
@@ -32,47 +32,39 @@
     <div></div><button class="ctrl" data-dir="up">▲</button><div></div>
     <button class="ctrl" data-dir="left">◀</button><button class="ctrl" data-dir="down">▼</button><button class="ctrl" data-dir="right">▶</button>
   </div>
-  <div id="actions"><button class="action" id="act">कार्य / कुरा</button><button class="action" id="reset">फेरि सुरु</button></div>
+  <div id="actions"><button class="action" id="act">कार्य / ��ुरा</button><button class="action" id="reset">फेरि सुरु</button></div>
 </div>
 <div id="modal"><div id="panel"><h2 id="mtitle">स्वागत छ!</h2><p id="mtext"></p><button id="close">ठीक छ</button></div></div>
 <script>
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 let W=0,H=0,scale=1,player={x:0,y:0},dir='down',keys={},visited={temple:false,lake:false},message='';
 const world={temple:{x:0.68,y:0.36},lake:{x:0.28,y:0.62},house:{x:0.77,y:0.68}};
-function resize(){W=canvas.width=innerWidth*devicePixelRatio;H=canvas.height=innerHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);W=innerWidth;H=innerHeight;scale=Math.min(W/390,H/700);player.x=W*.48;player.y=H*.57;draw()}
+function resize(){W=canvas.width=innerWidth*devicePixelRatio;H=canvas.height=innerHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);W=innerWidth;H=innerHeight;scale=Math.min(W,H)/900;player.x=player.x||W*.48;player.y=player.y||H*.57}
 addEventListener('resize',resize);
 function poly(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}}
 function ellipse(x,y,rx,ry,c){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=c;ctx.fill()}
 function tree(x,y,s=1){ellipse(x,y+15*s,13*s,5*s,'#315e38');poly([[x,y-35*s],[x-17*s,y+3*s],[x+17*s,y+3*s]],'#287a43');poly([[x,y-22*s],[x-14*s,y+12*s],[x+14*s,y+12*s]],'#399653');}
-function house(x,y,s=1){poly([[x-32*s,y],[x,y-25*s],[x+32*s,y],[x+32*s,y+32*s],[x-32*s,y+32*s]],'#e8c99b','#76533a');poly([[x-38*s,y],[x,y-34*s],[x+38*s,y]],'#9c4935','#63362d');ctx.fillStyle='#543b2c';ctx.fillRect(x-7*s,y+10*s,14*s,22*s);ctx.fillStyle='#9bd5e5';ctx.fillRect(x+14*s,y+8*s,10*s,10*s)}
-function temple(x,y){poly([[x-38,y+12],[x+38,y+12],[x+30,y+38],[x-30,y+38]],'#d6a64b','#77512c');poly([[x-34,y+12],[x,y-4],[x+34,y+12]],'#b84d36','#6f3028');poly([[x-26,y-3],[x,y-20],[x+26,y-3]],'#d7a64b','#77512c');poly([[x-13,y-20],[x,y-34],[x+13,y-20]],'#b84d36');ctx.fillStyle='#513b2c';ctx.fillRect(x-7,y+18,14,20);ellipse(x,y-37,3,4,'#e7c04d')}
+function house(x,y,s=1){poly([[x-32*s,y],[x,y-25*s],[x+32*s,y],[x+32*s,y+32*s],[x-32*s,y+32*s]],'#e8c99b','#76533a');poly([[x-38*s,y],[x,y-34*s],[x+38*s,y]],'#9c4935','#63362d');ctx.fillStyle='#543b2c';ctx.fillRect(x-18*s,y+12*s,36*s,20*s)}
+function temple(x,y){poly([[x-38,y+12],[x+38,y+12],[x+30,y+38],[x-30,y+38]],'#d6a64b','#77512c');poly([[x-34,y+12],[x,y-4],[x+34,y+12]],'#b84d36','#6f3028');poly([[x-26,y-3],[x,y-20],[x+26,y-3]],'#d7a878','#8a633b');}
 function draw(){
  ctx.clearRect(0,0,W,H);
- // sky and distant mountains
  let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#86d5ed');g.addColorStop(.48,'#d7f0df');g.addColorStop(.49,'#85bd68');g.addColorStop(1,'#397c48');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
  poly([[0,H*.48],[W*.15,H*.25],[W*.32,H*.47],[W*.48,H*.19],[W*.72,H*.48],[W*.88,H*.28],[W,H*.47]],'#7da9a0');
  poly([[W*.08,H*.36],[W*.15,H*.25],[W*.22,H*.36],[W*.17,H*.33],[W*.14,H*.37]],'#f2f5ed');
  poly([[W*.42,H*.31],[W*.48,H*.19],[W*.55,H*.33],[W*.49,H*.29]],'#f5f5eb');
- // ground paths
  poly([[W*.44,H*.47],[W*.55,H*.47],[W*.85,H*.95],[W*.55,H*.95]],'#c6aa78');
  poly([[W*.44,H*.47],[W*.53,H*.47],[W*.29,H*.95],[W*.14,H*.95]],'#c6aa78');
- // lake
  ellipse(W*.28,H*.65,W*.17,H*.075,'#347fa0');ellipse(W*.28,H*.65,W*.145,H*.055,'#5cb4cf');
  for(let i=0;i<4;i++){ctx.strokeStyle='#b9e8ed88';ctx.beginPath();ctx.arc(W*.28,H*.65,12+i*9,0,Math.PI);ctx.stroke()}
- // temple and buildings
  temple(W*.68,H*.40);house(W*.78,H*.70,.85);house(W*.16,H*.75,.72);
  tree(W*.08,H*.56,.85);tree(W*.9,H*.52,1);tree(W*.53,H*.7,.8);tree(W*.37,H*.42,.65);tree(W*.92,H*.82,.9);
- // small fields
  for(let i=0;i<5;i++){ctx.strokeStyle='#d5e69a77';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W*.02,H*(.84+i*.025));ctx.lineTo(W*.3,H*(.78+i*.03));ctx.stroke()}
- // labels
  label('शिव मन्दिर',W*.68,H*.32);label('पोखरी',W*.28,H*.55);label('गाउँ',W*.77,H*.78);
- // player
  drawPlayer(player.x,player.y);
 }
 function label(t,x,y){ctx.font='bold 12px system-ui';let m=ctx.measureText(t).width;ctx.fillStyle='#fffE';ctx.fillRect(x-m/2-6,y-14,m+12,20);ctx.fillStyle='#193a2f';ctx.textAlign='center';ctx.fillText(t,x,y)}
 function drawPlayer(x,y){
  ellipse(x,y+17,13,5,'#23452d88');
- // body
  ctx.fillStyle='#2b527f';ctx.fillRect(x-8,y-5,16,19);
  ctx.fillStyle='#e6a879';ellipse(x,y-13,8,9,'#e7b28d');
  ctx.fillStyle='#272421';ctx.beginPath();ctx.arc(x,y-17,8,Math.PI,Math.PI*2);ctx.fill();
@@ -80,34 +72,50 @@ function drawPlayer(x,y){
 }
 function nearby(){let t=Math.hypot(player.x-W*world.temple.x,player.y-H*world.temple.y),l=Math.hypot(player.x-W*world.lake.x,player.y-H*world.lake.y);return t<65? 'temple':l<70?'lake':null}
 function show(title,text){document.getElementById('mtitle').textContent=title;document.getElementById('mtext').textContent=text;document.getElementById('modal').style.display='flex'}
-function action(){let n=nearby();if(n==='temple'){visited.temple=true;show('शिव मन्दिर','तपाईं गाउँको शिव मन्दिर आइपुग्नुभयो। यहाँ दर्शन गर्न र स्थानीय संस्कृति बुझ्न सकिन्छ। यो डेमोको पहिलो स्थान पूरा भयो।')}else if(n==='lake'){visited.lake=true;show('गाउँको पोखरी','तपाईं पोखरीमा आइपुग्नुभयो। डेमोमा तपाईंले यहाँ स्नान गर्ने दृश्य सुरु गर्न सक्नुहुन्छ। वास्तविक ठाउँमा सुरक्षित र अनुमति भएको स्थानमा मात्र स्नान गर्नुहोस्।')}else show('गाउँ अन्वेषण','मन्दिर वा पोखरीको नजिक जानुहोस्। त्यसपछि फेरि “कार्य / कुरा” थिच्नुहोस्।');updateStats()}
+function action(){let n=nearby();if(n==='temple'){visited.temple=true;show('शिव मन्दिर','तपाईं गाउँको शिव मन्दिर आइपुग्नुभयो।');}else if(n==='lake'){visited.lake=true;show('पोखरी','तपाईं पोखरीतिर पुग्नुभयो।');}else{show('गाउँ','मन्दिर वा पोखरी नजिक जाँदै छैन।');}updateStats()}
 function updateStats(){let c=Object.values(visited).filter(Boolean).length;document.getElementById('stats').textContent=`गाउँ अन्वेषण • ${c}/२ स्थान`}
 document.getElementById('act').onclick=action;document.getElementById('close').onclick=()=>document.getElementById('modal').style.display='none';
 document.getElementById('reset').onclick=()=>{player.x=W*.48;player.y=H*.57;visited={temple:false,lake:false};updateStats();draw()};
-document.querySelectorAll('[data-dir]').forEach(b=>{let d=b.dataset.dir;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[d]=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>keys[d]=false))});
+document.querySelectorAll('[data-dir]').forEach(b=>{let d=b.dataset.dir;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[d]=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>keys[d]=false));});
+function setKeyState(code, pressed){
+  const key = code.toLowerCase();
+  if (key === 'w' || key === 'arrowup') keys.up = pressed;
+  if (key === 's' || key === 'arrowdown') keys.down = pressed;
+  if (key === 'a' || key === 'arrowleft') keys.left = pressed;
+  if (key === 'd' || key === 'arrowright') keys.right = pressed;
+}
 window.addEventListener('keydown', function(e) {
   const k = e.key.toLowerCase();
-
-  if (k === 'w' || k === 'arrowup') keys.up = true;
-  if (k === 's' || k === 'arrowdown') keys.down = true;
-  if (k === 'a' || k === 'arrowleft') keys.left = true;
-  if (k === 'd' || k === 'arrowright') keys.right = true;
-
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
     e.preventDefault();
+    setKeyState(e.key, true);
   }
 });
-
 window.addEventListener('keyup', function(e) {
   const k = e.key.toLowerCase();
-
-  if (k === 'w' || k === 'arrowup') keys.up = false;
-  if (k === 's' || k === 'arrowdown') keys.down = false;
-  if (k === 'a' || k === 'arrowleft') keys.left = false;
-  if (k === 'd' || k === 'arrowright') keys.right = false;
+  if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
+    e.preventDefault();
+    setKeyState(e.key, false);
+  }
 });
-function loop(){let speed=2.6;if(keys.up)player.y-=speed;if(keys.down)player.y+=speed;if(keys.left)player.x-=speed;if(keys.right)player.x+=speed;player.x=Math.max(18,Math.min(W-18,player.x));player.y=Math.max(H*.43,Math.min(H-65,player.y));draw();let n=nearby();document.getElementById('hint').textContent=n==='temple'?'मन्दिर नजिक हुनुहुन्छ — “कार्य / कुरा” थिच्नुहोस्।':n==='lake'?'पोखरी नजिक हुनुहुन्छ — “कार्य / कुरा” थिच्नुहोस्।':'तीर बटनले हिँड्नुहोस्। मन्दिर वा पोखरी नजिक पुग्नुहोस्।';requestAnimationFrame(loop)}
-resize();loop();
+function loop(){
+  const speed=2.6;
+  const moveX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  const moveY = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+  const length = Math.hypot(moveX, moveY) || 1;
+
+  if (moveX || moveY) {
+    player.x += (moveX / length) * speed;
+    player.y += (moveY / length) * speed;
+  }
+
+  player.x=Math.max(18,Math.min(W-18,player.x));
+  player.y=Math.max(18,Math.min(H-18,player.y));
+  draw();
+  requestAnimationFrame(loop);
+}
+resize();
+requestAnimationFrame(loop);
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
 </body></html>
