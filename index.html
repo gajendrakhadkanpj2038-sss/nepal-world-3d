@@ -1,264 +1,159 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
-    />
-    <meta name="theme-color" content="#123f36" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>NEPAL WORLD 3D</title>
-    <style>
-      html, body {
-        margin: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #000;
-        color: white;
-        font-family: system-ui, sans-serif;
-        touch-action: none;
-      }
+<html lang="ne">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#123f36" />
+  <title>NEPAL WORLD 3D</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; }
+    #game { display: block; width: 100%; height: 100%; }
 
-      body {
-        position: relative;
-      }
+    /* GTA-Style Loading / Title Screen */
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #1b382b 0%, #08120e 100%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      transition: opacity 1s ease, visibility 1s ease;
+    }
+    #splash-screen.hidden { opacity: 0; visibility: hidden; }
+    .gta-title {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #dc3545;
+      text-shadow: 0 0 20px rgba(220, 53, 69, 0.6), 3px 3px 0px #000;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .gta-subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.8rem);
+      font-weight: 700;
+      color: #f8f9fa;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    .credits-box {
+      border-top: 2px solid #dc3545;
+      border-bottom: 2px solid #dc3545;
+      padding: 15px 30px;
+      background: rgba(0,0,0,0.4);
+      margin-bottom: 40px;
+    }
+    .credits-text { font-size: 1.1rem; color: #dae0e5; font-weight: 600; letter-spacing: 1px; }
+    .author-name { color: #ffc107; font-size: 1.3rem; font-weight: 800; }
+    
+    .start-btn {
+      padding: 14px 40px;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #123f36;
+      background: #ffc107;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .start-btn:hover { transform: scale(1.05); background: #fff; }
 
-      #game {
-        display: block;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(#8edaf5, #d8f0df 42%, #7dbf5c 43%, #3d7344 100%);
-      }
+    /* HUD Controls & Info */
+    #hud {
+      position: fixed;
+      top: 15px; left: 15px; right: 15px;
+      display: flex; justify-content: space-between; align-items: center;
+      pointer-events: none; z-index: 30;
+    }
+    .pill {
+      background: rgba(10, 25, 20, 0.85);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: white; padding: 10px 18px; border-radius: 20px;
+      font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
 
-      #hud {
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        right: 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        pointer-events: none;
-        z-index: 30;
-      }
+    #quest-tracker {
+      position: fixed; top: 70px; left: 15px;
+      background: rgba(12, 20, 18, 0.85);
+      border-left: 4px solid #ffc107;
+      padding: 12px 18px; border-radius: 4px 12px 12px 4px;
+      z-index: 20; max-width: 320px;
+    }
+    #quest-tracker h4 { color: #ffc107; margin-bottom: 5px; font-size: 14px; }
+    #quest-tracker p { font-size: 13px; color: #ddd; line-height: 1.4; }
 
-      .pill {
-        background: rgba(16, 44, 39, 0.86);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 14px;
-        font-size: 13px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-      }
+    #dialogue-modal {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      width: 90%; max-width: 600px; background: rgba(15, 23, 20, 0.95);
+      border: 2px solid #28a745; padding: 20px; border-radius: 15px;
+      display: none; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+    #dialogue-title { color: #ffc107; font-size: 1.2rem; margin-bottom: 8px; }
+    #dialogue-text { font-size: 1rem; color: #eee; margin-bottom: 15px; line-height: 1.5; }
+    .action-btn {
+      background: #28a745; color: white; border: none;
+      padding: 8px 18px; border-radius: 8px; font-weight: 700; cursor: pointer;
+    }
 
-      #hint {
-        position: fixed;
-        left: 50%;
-        top: 68px;
-        transform: translateX(-50%);
-        z-index: 20;
-        background: rgba(255,255,255,0.92);
-        color: #17352d;
-        padding: 9px 14px;
-        border-radius: 14px;
-        font-size: 13px;
-        text-align: center;
-        max-width: 90%;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.15);
-      }
+    #controls-hint {
+      position: fixed; bottom: 15px; right: 15px;
+      background: rgba(0,0,0,0.6); padding: 8px 14px;
+      border-radius: 8px; font-size: 12px; color: #aaa;
+    }
+  </style>
+  <!-- Three.js Library & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
 
-      #controls {
-        position: fixed;
-        left: 16px;
-        right: 16px;
-        bottom: 18px;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        pointer-events: none;
-        z-index: 20;
-      }
-
-      #pad {
-        display: grid;
-        grid-template-columns: 48px 48px 48px;
-        grid-template-rows: 48px 48px;
-        gap: 5px;
-        pointer-events: auto;
-      }
-
-      .ctrl {
-        border: 1px solid rgba(255,255,255,.7);
-        background: rgba(22,59,54,.85);
-        color: #fff;
-        border-radius: 14px;
-        font-size: 22px;
-        font-weight: 700;
-        touch-action: none;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-      }
-
-      #reset {
-        pointer-events: auto;
-        border: 0;
-        border-radius: 15px;
-        padding: 12px 15px;
-        background: white;
-        color: #17352d;
-        font-weight: 800;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.18);
-      }
-
-      #modal {
-        position: fixed;
-        inset: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(0,0,0,0.5);
-        z-index: 50;
-      }
-
-      #panel {
-        background: white;
-        color: #17352d;
-        max-width: 380px;
-        width: 100%;
-        padding: 22px;
-        border-radius: 20px;
-        text-align: center;
-        box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-      }
-
-      #panel h2 { margin: 0 0 8px; }
-      #panel p { line-height: 1.6; }
-      #close {
-        border: 0;
-        background: #1c6655;
-        color: white;
-        border-radius: 12px;
-        padding: 11px 22px;
-        font-weight: 700;
-      }
-
-      #questBanner {
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%) scale(0.9);
-        background: linear-gradient(135deg, #f6ffb8, #fff7d1, #ffd8a8);
-        color: #153d39;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        border-radius: 20px;
-        padding: 22px 34px;
-        font-size: clamp(1.2rem, 2.6vw, 2.4rem);
-        box-shadow: 0 18px 50px rgba(0,0,0,.35);
-        border: 2px solid rgba(11,37,31,.18);
-        opacity: 0;
-        pointer-events: none;
-        transition: all 0.35s ease;
-        z-index: 60;
-      }
-
-      #questBanner.show {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-      }
-
-      #questBanner.hide {
-        opacity: 0;
-      }
-
-      #joystick {
-        position: fixed;
-        left: 18px;
-        bottom: 22px;
-        width: 140px;
-        height: 140px;
-        border-radius: 50%;
-        display: none;
-        pointer-events: auto;
-        touch-action: none;
-        z-index: 25;
-      }
-
-      #joystick-base {
-        position: absolute;
-        inset: 0;
-        border-radius: 50%;
-        background: rgba(255,255,255,.12);
-        border: 2px solid rgba(255,255,255,.25);
-        box-shadow: inset 0 0 25px rgba(255,255,255,.12);
-      }
-
-      #joystick-knob {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 54px;
-        height: 54px;
-        border-radius: 50%;
-        transform: translate(-50%,-50%);
-        background: linear-gradient(#fff,#dce9ef);
-        box-shadow: 0 6px 20px rgba(0,0,0,.22);
-        border: 2px solid rgba(12,48,45,.25);
-      }
-
-      body.mobile #joystick { display: block; }
-      body.mobile #pad { display: none; }
-      body.mobile #controls {
-        left: 0;
-        right: 0;
-        padding: 0 18px 18px;
-        align-items: flex-end;
-      }
-      body.mobile #reset { margin-left: auto; }
-
-      @media (max-width: 480px) {
-        .pill { font-size: 11px; padding: 7px 10px; }
-        #hint { font-size: 11px; padding: 8px 10px; }
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="game"></canvas>
-
-    <div id="hud">
-      <div class="pill">🇳🇵 बागेश्वरी मन्दिर</div>
-      <div class="pill" id="stats">Quest: ०/१</div>
+  <!-- Loading / Title Screen -->
+  <div id="splash-screen">
+    <div class="gta-title">NEPAL WORLD 3D</div>
+    <div class="gta-subtitle">REALISTIC MOUNTAIN ADVENTURE</div>
+    <div class="credits-box">
+      <div class="credits-text">CREATED BY</div>
+      <div class="author-name">GAJENDRA KUMAR KHADKA</div>
+      <div class="credits-text" style="font-size: 0.9rem; margin-top:4px;">&</div>
+      <div class="author-name">SHRIJAN KHADKA</div>
     </div>
+    <button class="start-btn" onclick="startGame()">START GAME</button>
+  </div>
 
-    <div id="hint">तीर बटन थिचेर हिँड्नुहोस्। मन्दिर वा झाड नजिक पुगेर E थिच्नुहोस्।</div>
+  <canvas id="game"></canvas>
 
-    <div id="controls">
-      <div id="pad">
-        <div></div><button class="ctrl" data-dir="up">▲</button><div></div>
-        <button class="ctrl" data-dir="left">◀</button><button class="ctrl" data-dir="down">▼</button><button class="ctrl" data-dir="right">▶</button>
-      </div>
-      <button id="reset">फेरि सुरु</button>
-    </div>
+  <div id="hud">
+    <div class="pill">🇳🇵 बागेश्वरी & नेपालगन्ज भ्याली</div>
+    <div class="pill" id="stats">स्थान: नेपाल</div>
+  </div>
 
-    <div id="joystick" aria-label="mobile joystick">
-      <div id="joystick-base">
-        <div id="joystick-knob"></div>
-      </div>
-    </div>
+  <div id="quest-tracker">
+    <h4 id="q-title">मुख्य मिसन (Main Quest)</h4>
+    <p id="q-desc">बागेश्वरी मन्दिरका मुख्य पुजारी (Panditji) सँग गएर भेट्नुहोस् र आशीर्वाद लिनुहोस्।</p>
+  </div>
 
-    <div id="questBanner">Quest Complete</div>
+  <div id="dialogue-modal">
+    <h3 id="dialogue-title">NPC Dialogue</h3>
+    <p id="dialogue-text">नमस्ते!</p>
+    <button class="action-btn" onclick="closeDialogue()">कुराकानी बन्द गर्नुहोस् (E)</button>
+  </div>
 
-    <div id="modal">
-      <div id="panel">
-        <h2 id="mtitle">स्वागत छ!</h2>
-        <p id="mtext"></p>
-        <button id="close">ठीक छ</button>
-      </div>
-    </div>
+  <div id="controls-hint">W, A, S, D = हिँड्नुहोस् | Mouse = हेर्नुहोस् | E = Interact</div>
 
-    <script type="module" src="./main.js"></script>
-  </body>
+  <script src="./main.js"></script>
+  <script>
+    function startGame() {
+      const splash = document.getElementById('splash-screen');
+      splash.classList.add('hidden');
+      if(window.initGame) window.initGame();
+    }
+  </script>
+</body>
 </html>
