@@ -58,9 +58,12 @@ const player = {
 let questStarted = false;
 let hasCoconut = false;
 let questComplete = false;
+let coconutIsDropping = false;
+let coconutReadyOnGround = false;
+let coconutPickedUp = false;
 
 const coconut = new THREE.Mesh(
-  new THREE.SphereGeometry(0.42, 18, 18),
+  new THREE.SphereGeometry(0.35, 18, 18),
   new THREE.MeshStandardMaterial({
     color: 0x8a4a2b,
     roughness: 0.8,
@@ -277,22 +280,87 @@ function createNPC() {
 
 function createPlayerMesh() {
   const group = new THREE.Group();
+  group.scale.setScalar(0.75);
 
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.8, 2.2, 8, 16),
+  const torso = new THREE.Mesh(
+    new THREE.BoxGeometry(0.9, 1.5, 0.5),
     new THREE.MeshStandardMaterial({ color: 0x2e5d9f, roughness: 0.7, metalness: 0.15 })
   );
-  body.position.y = 1.9;
-  body.castShadow = true;
-  group.add(body);
+  torso.position.y = 1.8;
+  torso.castShadow = true;
+  group.add(torso);
 
   const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.6, 18, 18),
+    new THREE.SphereGeometry(0.52, 20, 20),
     new THREE.MeshStandardMaterial({ color: 0xf1c79a, roughness: 0.9 })
   );
-  head.position.y = 3.8;
+  head.position.y = 3.2;
   head.castShadow = true;
   group.add(head);
+
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.54, 20, 20),
+    new THREE.MeshStandardMaterial({ color: 0x2b1d15, roughness: 0.9 })
+  );
+  hair.scale.set(1.1, 0.8, 1.1);
+  hair.position.set(0, 3.4, -0.04);
+  hair.castShadow = true;
+  group.add(hair);
+
+  const face = new THREE.Mesh(
+    new THREE.BoxGeometry(0.44, 0.22, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x1a1a1a })
+  );
+  face.position.set(0, 3.2, 0.5);
+  group.add(face);
+
+  const leftArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.12, 0.9, 12),
+    new THREE.MeshStandardMaterial({ color: 0xf1c79a, roughness: 0.9 })
+  );
+  leftArm.position.set(-0.7, 1.8, 0);
+  leftArm.rotation.z = 0.6;
+  leftArm.castShadow = true;
+  group.add(leftArm);
+
+  const rightArm = leftArm.clone();
+  rightArm.position.x = 0.7;
+  rightArm.rotation.z = -0.6;
+  group.add(rightArm);
+
+  const leftHand = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xf1c79a, roughness: 0.9 })
+  );
+  leftHand.position.set(-0.95, 1.2, 0);
+  group.add(leftHand);
+
+  const rightHand = leftHand.clone();
+  rightHand.position.x = 0.95;
+  group.add(rightHand);
+
+  const leftLeg = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.14, 0.14, 1.2, 12),
+    new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.9 })
+  );
+  leftLeg.position.set(-0.22, 0.55, 0);
+  leftLeg.castShadow = true;
+  group.add(leftLeg);
+
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x = 0.22;
+  group.add(rightLeg);
+
+  const leftShoe = new THREE.Mesh(
+    new THREE.BoxGeometry(0.25, 0.12, 0.42),
+    new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.9 })
+  );
+  leftShoe.position.set(-0.22, 0.02, 0.1);
+  group.add(leftShoe);
+
+  const rightShoe = leftShoe.clone();
+  rightShoe.position.x = 0.22;
+  group.add(rightShoe);
 
   group.position.copy(player.position);
   scene.add(group);
@@ -300,8 +368,9 @@ function createPlayerMesh() {
 }
 
 function createCoconutPickup() {
-  coconut.position.set(world.treePos.x, 7.2, world.treePos.z + 0.7);
+  coconut.position.set(world.treePos.x + 1.2, 6.5, world.treePos.z + 0.8);
   coconut.castShadow = true;
+  coconut.visible = false;
   scene.add(coconut);
 }
 
@@ -367,14 +436,31 @@ function distance2D(a, b) {
   return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
+function dropCoconut() {
+  if (coconutIsDropping || coconutReadyOnGround || coconutPickedUp) return;
+  coconutIsDropping = true;
+  coconut.visible = true;
+  coconut.position.set(world.treePos.x + 1.2, 6.7, world.treePos.z + 0.8);
+  showModal('Coconut Tree', 'A coconut dropped from the tree. Pick it up and bring it to the villager.');
+}
+
+function pickupCoconut() {
+  if (!coconutReadyOnGround || coconutPickedUp) return;
+  coconutPickedUp = true;
+  coconut.visible = false;
+  hasCoconut = true;
+  showModal('Coconut', 'You picked up the coconut. Take it to the villager.');
+}
+
 function action() {
   const distToNpc = distance2D(player.position, world.npcPos);
   const distToTree = distance2D(player.position, world.treePos);
+  const distToCoconut = coconut.visible ? distance2D(player.position, coconut.position) : Infinity;
 
   if (distToNpc < 3.5) {
     if (!questStarted) {
       questStarted = true;
-      showModal('पजारी', 'नमस्कार! बागेश्वरी मन्दिरको लागि एउटा ताजा नारिकेल ल्याउनुहोस्। बाहिरको बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
+      showModal('पजारी', 'नमस्कार! बागेश्वरी मन्दिरको लागि एउटा ताजा नारिकेल ल्याउनुहोस्। नजिकको तिनीको झाडमा E थिचेर नारिकेल गराउनुहोस्।');
       return;
     }
 
@@ -387,19 +473,39 @@ function action() {
     }
 
     if (!hasCoconut) {
-      showModal('पजारी', 'तपाईंले अझै नारिकेल ल्याउनु भएको छैन। बाहिरको बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
+      showModal('पजारी', 'तपाईंले अझै नारिकेल ल्याउनु भएको छैन। झाडबाट नारिकेल झार्नुहोस्।');
       return;
     }
   }
 
   if (distToTree < 4.5) {
-    if (!hasCoconut) {
-      hasCoconut = true;
-      coconut.visible = false;
-      showModal('बोट', 'तपाईंले एक ताजा नारिकेल उठाउनुभयो। अब पजारीलाई ल्याउनुहोस्।');
+    if (!coconutReadyOnGround && !coconutIsDropping && !coconutPickedUp) {
+      dropCoconut();
       return;
     }
-    showModal('बोट', 'तपाईंले पहिले नै नारिकेल लिएर जानुभएको छ। पजारीलाई पुर्याउनुहोस्।');
+
+    if (coconutReadyOnGround && !coconutPickedUp) {
+      if (distToCoconut < 2.4) {
+        pickupCoconut();
+      } else {
+        showModal('Coconut Tree', 'The coconut is on the ground. Walk to it and press E.');
+      }
+      return;
+    }
+
+    if (coconutIsDropping) {
+      showModal('Coconut Tree', 'The coconut is still dropping. Wait a moment.');
+      return;
+    }
+
+    if (coconutPickedUp) {
+      showModal('Coconut Tree', 'You already picked it up. Now take it to the villager.');
+      return;
+    }
+  }
+
+  if (coconutReadyOnGround && distToCoconut < 2.4 && !coconutPickedUp) {
+    pickupCoconut();
     return;
   }
 
@@ -407,7 +513,7 @@ function action() {
   if (distToTemple < 5) {
     showModal('बागेश्वरी मन्दिर', 'मन्दिरको शान्ति र पजारीलाई भेट्नुहोस्।');
   } else {
-    showModal('मन्दिरको बाहिर', 'बागेश्वरी मन्दिरमा जानुहोस्। बोटमा चढ़ेर नारिकेल उठाउनुहोस्।');
+    showModal('मन्दिरको बाहिर', 'बागेश्वरी मन्दिरमा जानुहोस्। झाडबाट नारिकेल झार्नुहोस् र पजारीलाई पुर्याउनुहोस्।');
   }
 }
 
@@ -417,7 +523,11 @@ function resetGame() {
   questStarted = false;
   hasCoconut = false;
   questComplete = false;
-  coconut.visible = true;
+  coconutIsDropping = false;
+  coconutReadyOnGround = false;
+  coconutPickedUp = false;
+  coconut.visible = false;
+  coconut.position.set(world.treePos.x + 1.2, 6.5, world.treePos.z + 0.8);
   setQuestStatus();
 }
 
@@ -550,6 +660,18 @@ function updatePlayer(delta) {
   player.mesh.rotation.y = player.yaw;
 }
 
+function updateCoconut(delta) {
+  if (coconutIsDropping) {
+    coconut.position.y -= 8 * delta;
+    if (coconut.position.y <= 0.9) {
+      coconut.position.y = 0.9;
+      coconutIsDropping = false;
+      coconutReadyOnGround = true;
+      coconut.position.set(world.treePos.x + 1.2, 0.9, world.treePos.z + 0.8);
+    }
+  }
+}
+
 function updateCamera() {
   const offset = new THREE.Vector3(
     Math.sin(player.yaw) * 8.5,
@@ -592,6 +714,7 @@ function init() {
 function animate() {
   const delta = clock.getDelta();
   updatePlayer(delta);
+  updateCoconut(delta);
   updateCamera();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
