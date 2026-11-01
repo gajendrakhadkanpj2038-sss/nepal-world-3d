@@ -85,6 +85,27 @@ function updateStats(){let c=Object.values(visited).filter(Boolean).length;docum
 document.getElementById('act').onclick=action;document.getElementById('close').onclick=()=>document.getElementById('modal').style.display='none';
 document.getElementById('reset').onclick=()=>{player.x=W*.48;player.y=H*.57;visited={temple:false,lake:false};updateStats();draw()};
 document.querySelectorAll('[data-dir]').forEach(b=>{let d=b.dataset.dir;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[d]=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>keys[d]=false))});
+window.addEventListener('keydown', function(e) {
+  const k = e.key.toLowerCase();
+
+  if (k === 'w' || k === 'arrowup') keys.up = true;
+  if (k === 's' || k === 'arrowdown') keys.down = true;
+  if (k === 'a' || k === 'arrowleft') keys.left = true;
+  if (k === 'd' || k === 'arrowright') keys.right = true;
+
+  if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
+    e.preventDefault();
+  }
+});
+
+window.addEventListener('keyup', function(e) {
+  const k = e.key.toLowerCase();
+
+  if (k === 'w' || k === 'arrowup') keys.up = false;
+  if (k === 's' || k === 'arrowdown') keys.down = false;
+  if (k === 'a' || k === 'arrowleft') keys.left = false;
+  if (k === 'd' || k === 'arrowright') keys.right = false;
+});
 function loop(){let speed=2.6;if(keys.up)player.y-=speed;if(keys.down)player.y+=speed;if(keys.left)player.x-=speed;if(keys.right)player.x+=speed;player.x=Math.max(18,Math.min(W-18,player.x));player.y=Math.max(H*.43,Math.min(H-65,player.y));draw();let n=nearby();document.getElementById('hint').textContent=n==='temple'?'मन्दिर नजिक हुनुहुन्छ — “कार्य / कुरा” थिच्नुहोस्।':n==='lake'?'पोखरी नजिक हुनुहुन्छ — “कार्य / कुरा” थिच्नुहोस्।':'तीर बटनले हिँड्नुहोस्। मन्दिर वा पोखरी नजिक पुग्नुहोस्।';requestAnimationFrame(loop)}
 resize();loop();
 </script>
