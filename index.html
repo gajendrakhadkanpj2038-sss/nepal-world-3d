@@ -3,6 +3,298 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#123f36">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NEPAL WORLD 3D">
+<title>NEPAL WORLD 3D — गाउँ डेमो</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
+body{position:relative}
+#game{display:block;width:100%;height:100%;background:linear-gradient(#8fd7ef 0%,#c6eddf 48%,#77b85f 49%,#478c49 100%);opacity:0;transition:opacity .8s ease}
+#top{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s ease}
+.pill{background:#102c27dd;color:white;padding:8px 12px;border-radius:14px;font-size:13px;box-shadow:0 3px 10px #0003}
+#hint{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:#fffE;color:#17352d;padding:9px 13px;border-radius:14px;font-size:13px;text-align:center;max-width:90%;box-shadow:0 3px 12px #0002;opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s ease}
+#controls{position:fixed;bottom:18px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:end;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s ease}
+#pad{display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px;gap:5px;pointer-events:auto}
+.ctrl{border:1px solid #ffffff99;background:#163b36cc;color:white;border-radius:14px;font-size:22px;font-weight:700;box-shadow:0 3px 8px #0003;touch-action:none}
+.ctrl:active{background:#e8b84d;color:#18352e}
+#actions{display:flex;flex-direction:column;gap:8px;pointer-events:auto;align-items:end}
+.action{border:0;border-radius:15px;padding:12px 15px;background:#fff;color:#17352d;font-weight:800;box-shadow:0 3px 10px #0003}
+#modal{position:fixed;inset:0;background:#061c18aa;display:none;align-items:center;justify-content:center;padding:20px}
+#panel{background:#fff;border-radius:20px;padding:20px;max-width:340px;width:100%;color:#17352d;text-align:center;box-shadow:0 12px 35px #0005}
+#panel h2{margin:0 0 8px}#panel p{line-height:1.5}#close{background:#1c6655;color:white;border:0;border-radius:12px;padding:11px 22px;font-weight:700}
+.small{font-size:11px;opacity:.85}
+
+#loading-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;background:#000;z-index:20}
+.intro-text{color:#fff;text-align:center;font-size:clamp(1.2rem,2.6vw,2.6rem);line-height:1.5;letter-spacing:0.03em;opacity:0;animation:fadeText 2.2s ease forwards}
+@keyframes fadeText{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+#play-btn{border:0;border-radius:999px;padding:14px 32px;background:linear-gradient(#f8d76a,#e9b840);color:#17352d;font-size:1.05rem;font-weight:900;cursor:pointer;box-shadow:0 10px 28px rgba(233,184,64,.35);transition:transform .15s ease,box-shadow .15s ease}
+#play-btn:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(233,184,64,.45)}
+#play-btn:active{transform:translateY(0)}
+body.game-ready #top,body.game-ready #hint,body.game-ready #controls{opacity:1;visibility:visible}
+body.game-ready #game{opacity:1}
+
+#rotate-overlay{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.96);color:#fff;z-index:50;flex-direction:column;gap:12px;text-align:center;padding:24px;
+}
+#rotate-overlay strong{font-size:2rem}
+#rotate-overlay span{font-size:1rem;opacity:.8}
+body.portrait-mode #rotate-overlay{display:flex}
+body.portrait-mode #loading-screen,
+body.portrait-mode #game,
+body.portrait-mode #top,
+body.portrait-mode #hint,
+body.portrait-mode #controls,
+body.portrait-mode #joystick{display:none !important}
+
+#joystick{
+  position:fixed;left:18px;bottom:22px;width:140px;height:140px;border-radius:50%;display:none;pointer-events:auto;touch-action:none;z-index:15
+}
+#joystick-base{position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.25);box-shadow:inset 0 0 25px rgba(255,255,255,.12)}
+#joystick-knob{position:absolute;left:50%;top:50%;width:54px;height:54px;border-radius:50%;transform:translate(-50%,-50%);background:linear-gradient(#fff,#dce9ef);box-shadow:0 6px 20px rgba(0,0,0,.22);border:2px solid rgba(12,48,45,.25)}
+body.mobile #joystick{display:block}
+body.mobile #pad{display:none}
+body.mobile #controls{left:0;right:0;padding:0 18px 18px;align-items:flex-end}
+body.mobile #actions{margin-left:auto}
+@media (orientation: portrait){
+  #top{top:12px;left:12px;right:12px}
+  #hint{top:58px}
+  #controls{bottom:14px}
+}
+@media (max-width: 480px){
+  .pill{font-size:11px;padding:7px 10px}
+  #hint{font-size:11px;padding:8px 10px}
+  #actions .action{padding:10px 12px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<div id="loading-screen">
+  <div class="intro-text">Made by Gajendra Kumar Khadka<br>and Shrijan Khadka</div>
+  <button id="play-btn">Play</button>
+</div>
+
+<div id="rotate-overlay">
+  <strong>Rotate device</strong>
+  <span>Turn your phone to landscape mode to play.</span>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="top">
+  <div class="pill">🇳🇵 NEPAL WORLD 3D</div>
+  <div class="pill" id="stats">गाउँ अन्वेषण • ०/२ स्थान</div>
+</div>
+
+<div id="hint">तीर बटन थिचेर हिँड्नुहोस्। मन्दिर वा ताल नजिक पुगेर “कार्य” थिच्नुहोस्।</div>
+
+<div id="controls">
+  <div id="pad">
+    <div></div><button class="ctrl" data-dir="up">▲</button><div></div>
+    <button class="ctrl" data-dir="left">◀</button><button class="ctrl" data-dir="down">▼</button><button class="ctrl" data-dir="right">▶</button>
+  </div>
+
+  <div id="actions">
+    <button class="action" id="act">कार्य / कुरा</button>
+    <button class="action" id="reset">फेरि सुरु</button>
+  </div>
+</div>
+
+<div id="joystick" aria-label="mobile joystick">
+  <div id="joystick-base">
+    <div id="joystick-knob"></div>
+  </div>
+</div>
+
+<div id="modal"><div id="panel"><h2 id="mtitle">स्वागत छ!</h2><p id="mtext"></p><button id="close">ठीक छ</button></div></div>
+
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const joystickBase=document.getElementById('joystick-base');
+const joystickKnob=document.getElementById('joystick-knob');
+let W=0,H=0,scale=1,player={x:0,y:0},dir='down',keys={},visited={temple:false,lake:false},message='';
+let gameStarted=false;
+const isMobile = window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const world={temple:{x:0.68,y:0.36},lake:{x:0.28,y:0.62},house:{x:0.77,y:0.68}};
+const joystickState={active:false,x:0,y:0};
+
+if(isMobile) document.body.classList.add('mobile');
+
+function tryLandscapeLock(){
+  if (!isMobile) return;
+  if (screen.orientation && screen.orientation.lock) {
+    try { screen.orientation.lock('landscape'); } catch (e) {}
+  }
+}
+
+function updateOrientationState(){
+  const portrait = window.innerHeight > window.innerWidth;
+  document.body.classList.toggle('portrait-mode', portrait && isMobile);
+  document.body.classList.toggle('landscape-mode', !portrait || !isMobile);
+}
+window.addEventListener('resize', ()=> {
+  updateOrientationState();
+  tryLandscapeLock();
+});
+
+function resize(){
+  W=canvas.width=innerWidth*devicePixelRatio;
+  H=canvas.height=innerHeight*devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  W=innerWidth;H=innerHeight;scale=Math.min(W,H)/900;
+  player.x=player.x||W*.48;
+  player.y=player.y||H*.57;
+}
+addEventListener('resize',resize);
+
+function poly(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}}
+function ellipse(x,y,rx,ry,c){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=c;ctx.fill()}
+function tree(x,y,s=1){ellipse(x,y+15*s,13*s,5*s,'#315e38');poly([[x,y-35*s],[x-17*s,y+3*s],[x+17*s,y+3*s]],'#287a43');poly([[x,y-22*s],[x-14*s,y+12*s],[x+14*s,y+12*s]],'#399653');}
+function house(x,y,s=1){poly([[x-32*s,y],[x,y-25*s],[x+32*s,y],[x+32*s,y+32*s],[x-32*s,y+32*s]],'#e8c99b','#76533a');poly([[x-38*s,y],[x,y-34*s],[x+38*s,y]],'#9c4935','#63362d');ctx.fillStyle='#543b2c';ctx.fillRect(x-10*s,y+10*s,20*s,18*s);ctx.fillStyle='#f4e3b0';ctx.fillRect(x-6*s,y+18*s,12*s,4*s)}
+function temple(x,y){poly([[x-38,y+12],[x+38,y+12],[x+30,y+38],[x-30,y+38]],'#d6a64b','#77512c');poly([[x-34,y+12],[x,y-4],[x+34,y+12]],'#b84d36','#6f3028');poly([[x-26,y-3],[x,y-20],[x+26,y-3]],'#d7a95a','#7a542a');poly([[x-18,y+13],[x+18,y+13],[x+12,y+30],[x-12,y+30]],'#f7edc9','#9a7b47');}
+function label(t,x,y){ctx.font='bold 12px system-ui';let m=ctx.measureText(t).width;ctx.fillStyle='#fffE';ctx.fillRect(x-m/2-6,y-14,m+12,20);ctx.fillStyle='#193a2f';ctx.textAlign='center';ctx.fillText(t,x,y);ctx.textAlign='left'}
+function drawPlayer(x,y){
+ ellipse(x,y+17,13,5,'#23452d88');
+ ctx.fillStyle='#2b527f';ctx.fillRect(x-8,y-5,16,19);
+ ctx.fillStyle='#e6a879';ellipse(x,y-13,8,9,'#e7b28d');
+ ctx.fillStyle='#272421';ctx.beginPath();ctx.arc(x,y-17,8,Math.PI,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#202b32';ctx.fillRect(x-7,y+13,5,8);ctx.fillRect(x+2,y+13,5,8);
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#86d5ed');g.addColorStop(.48,'#d7f0df');g.addColorStop(.49,'#85bd68');g.addColorStop(1,'#397c48');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ poly([[0,H*.48],[W*.15,H*.25],[W*.32,H*.47],[W*.48,H*.19],[W*.72,H*.48],[W*.88,H*.28],[W,H*.47]],'#7da9a0');
+ poly([[W*.08,H*.36],[W*.15,H*.25],[W*.22,H*.36],[W*.17,H*.33],[W*.14,H*.37]],'#f2f5ed');
+ poly([[W*.42,H*.31],[W*.48,H*.19],[W*.55,H*.33],[W*.49,H*.29]],'#f5f5eb');
+ poly([[W*.44,H*.47],[W*.55,H*.47],[W*.85,H*.95],[W*.55,H*.95]],'#c6aa78');
+ poly([[W*.44,H*.47],[W*.53,H*.47],[W*.29,H*.95],[W*.14,H*.95]],'#c6aa78');
+ ellipse(W*.28,H*.65,W*.17,H*.075,'#347fa0');ellipse(W*.28,H*.65,W*.145,H*.055,'#5cb4cf');
+ for(let i=0;i<4;i++){ctx.strokeStyle='#b9e8ed88';ctx.beginPath();ctx.arc(W*.28,H*.65,12+i*9,0,Math.PI);ctx.stroke()}
+ temple(W*.68,H*.40);house(W*.78,H*.70,.85);house(W*.16,H*.75,.72);
+ tree(W*.08,H*.56,.85);tree(W*.9,H*.52,1);tree(W*.53,H*.7,.8);tree(W*.37,H*.42,.65);tree(W*.92,H*.82,.9);
+ for(let i=0;i<5;i++){ctx.strokeStyle='#d5e69a77';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W*.02,H*(.84+i*.025));ctx.lineTo(W*.3,H*(.78+i*.03));ctx.stroke()}
+ label('शिव मन्दिर',W*.68,H*.32);label('पोखरी',W*.28,H*.55);label('गाउँ',W*.77,H*.78);
+ drawPlayer(player.x,player.y);
+}
+function nearby(){let t=Math.hypot(player.x-W*world.temple.x,player.y-H*world.temple.y),l=Math.hypot(player.x-W*world.lake.x,player.y-H*world.lake.y);return t<65?'temple':l<70?'lake':null}
+function show(title,text){document.getElementById('mtitle').textContent=title;document.getElementById('mtext').textContent=text;document.getElementById('modal').style.display='flex'}
+function action(){let n=nearby();if(n==='temple'){visited.temple=true;show('शिव मन्दिर','तपाईं गाउँको शिव मन्दिर आइपुग्नुभए। मन्दिरको शान्ति र सौन्दर्य मन पर्छ।');}else if(n==='lake'){visited.lake=true;show('पोखरी','तपाईं पोखरीतिर पुग्नुभए। पानीको हिलो र हावाले गाउँलाई मनमोहक बनाएको छ।');}else{show('अझै नजिक छैन','मन्दिर वा पोखरी नजिक पुगेर \"कार्य\" थिच्नुहोस्।')}}
+function updateStats(){let c=Object.values(visited).filter(Boolean).length;document.getElementById('stats').textContent=`गाउँ अन्वेषण • ${c}/२ स्थान`}
+
+document.getElementById('act').onclick=action;
+document.getElementById('close').onclick=()=>document.getElementById('modal').style.display='none';
+document.getElementById('reset').onclick=()=>{player.x=W*.48;player.y=H*.57;visited={temple:false,lake:false};updateStats();draw();};
+
+document.querySelectorAll('[data-dir]').forEach(b=>{
+  let d=b.dataset.dir;
+  b.addEventListener('pointerdown',e=>{e.preventDefault();keys[d]=true;});
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>keys[d]=false));
+});
+
+function resetJoystick(){
+  joystickState.active=false;
+  joystickState.x=0;
+  joystickState.y=0;
+  joystickKnob.style.transform='translate(-50%,-50%)';
+}
+function updateJoystick(clientX,clientY){
+  const rect=joystickBase.getBoundingClientRect();
+  const cx=rect.left + rect.width/2;
+  const cy=rect.top + rect.height/2;
+  let dx = clientX - cx;
+  let dy = clientY - cy;
+  const max = rect.width * 0.34;
+  const dist = Math.hypot(dx,dy);
+  const scale = dist > max ? max / dist : 1;
+  dx *= scale;
+  dy *= scale;
+  joystickState.x = dx / max;
+  joystickState.y = dy / max;
+  joystickKnob.style.transform=`translate(${dx}px,${dy}px)`;
+}
+joystickBase.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  joystickState.active=true;
+  joystickBase.setPointerCapture(e.pointerId);
+  updateJoystick(e.clientX,e.clientY);
+});
+joystickBase.addEventListener('pointermove', e=>{
+  if(!joystickState.active) return;
+  updateJoystick(e.clientX,e.clientY);
+});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>{
+  joystickBase.addEventListener(ev, e=>{ resetJoystick(); });
+});
+
+function getMoveVector(){
+  let x=0,y=0;
+  if(keys.left) x -= 1;
+  if(keys.right) x += 1;
+  if(keys.up) y -= 1;
+  if(keys.down) y += 1;
+  if(joystickState.active){
+    x += joystickState.x;
+    y += joystickState.y;
+  }
+  return {x, y};
+}
+
+function startGame(){
+  if(gameStarted) return;
+  gameStarted=true;
+  document.body.classList.add('game-ready');
+  document.getElementById('loading-screen').style.display='none';
+  updateStats();
+  requestAnimationFrame(loop);
+}
+document.getElementById('play-btn').addEventListener('click', startGame);
+
+window.addEventListener('keydown', function(e) {
+  const k = e.key.toLowerCase();
+  if (!gameStarted && (k === 'enter' || k === ' ')) { startGame(); e.preventDefault(); return; }
+  if (k === 'w' || k === 'arrowup') keys.up = true;
+  if (k === 's' || k === 'arrowdown') keys.down = true;
+  if (k === 'a' || k === 'arrowleft') keys.left = true;
+  if (k === 'd' || k === 'arrowright') keys.right = true;
+  if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
+});
+
+window.addEventListener('keyup', function(e) {
+  const k = e.key.toLowerCase();
+  if (k === 'w' || k === 'arrowup') keys.up = false;
+  if (k === 's' || k === 'arrowdown') keys.down = false;
+  if (k === 'a' || k === 'arrowleft') keys.left = false;
+  if (k === 'd' || k === 'arrowright') keys.right = false;
+});
+
+function loop(){
+  if(!gameStarted){ draw(); return; }
+  const move = getMoveVector();
+  const speed=2.6;
+  player.x += move.x * speed;
+  player.y += move.y * speed;
+  player.x=Math.max(18,Math.min(W-18,player.x));
+  player.y=Math.max(20,Math.min(H-20,player.y));
+  draw();
+  requestAnimationFrame(loop);
+}
+
+updateOrientationState();
+tryLandscapeLock();
+resize();
+draw();
+</script>
+
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
+</body>
+</html>
+<!doctype html>
+<html lang="ne">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#123f36"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Nepal World 3D">
 <title>NEPAL WORLD 3D — गाउँ डेमो</title>
 <style>
