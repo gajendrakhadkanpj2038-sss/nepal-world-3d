@@ -182,6 +182,38 @@ function createSkinTexture() {
   }, 256);
 }
 
+function createNepaliDressTexture(primaryColor, accentColor = '#f5d88b') {
+  return createCanvasTexture((ctx, size) => {
+    ctx.fillStyle = primaryColor;
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.72)';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(18, size);
+    ctx.moveTo(size - 18, 0);
+    ctx.lineTo(size - 18, size);
+    ctx.stroke();
+
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.18);
+    ctx.lineTo(size, size * 0.18);
+    ctx.moveTo(0, size * 0.82);
+    ctx.lineTo(size, size * 0.82);
+    ctx.moveTo(0, size * 0.5);
+    ctx.lineTo(size, size * 0.5);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    for (let x = 10; x < size; x += 26) {
+      ctx.fillRect(x, 18, 4, size - 36);
+    }
+  }, 256);
+}
+
 function createClothTexture() {
   return createCanvasTexture((ctx, size) => {
     ctx.fillStyle = '#dddddd';
@@ -527,7 +559,15 @@ function createClouds() {
 function createHumanoid(color) {
   const group = new THREE.Group();
 
-  const shirtTexture = createClothTexture();
+  const dressColor = new THREE.Color(color).getStyle();
+  const dressTexture = createNepaliDressTexture(dressColor, '#f5d88b');
+  const sashTexture = createCanvasTexture((ctx, size) => {
+    ctx.fillStyle = '#f5d88b';
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = '#b4512d';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(10, 10, size - 20, size - 20);
+  }, 256);
   const skinTexture = createSkinTexture();
   const topiTexture = createCanvasTexture((ctx, size) => {
     ctx.fillStyle = '#5d0a0a';
@@ -540,8 +580,13 @@ function createHumanoid(color) {
   }, 256);
 
   const bodyMaterial = new THREE.MeshStandardMaterial({
-    map: shirtTexture,
+    map: dressTexture,
     roughness: 0.9
+  });
+
+  const sashMaterial = new THREE.MeshStandardMaterial({
+    map: sashTexture,
+    roughness: 0.8
   });
 
   const skinMaterial = new THREE.MeshStandardMaterial({
@@ -557,6 +602,10 @@ function createHumanoid(color) {
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.7), bodyMaterial);
   torso.position.y = 1.45;
   group.add(torso);
+
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.14, 0.45), sashMaterial);
+  sash.position.y = 0.8;
+  group.add(sash);
 
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 18), skinMaterial);
   head.position.y = 2.5;
@@ -609,20 +658,7 @@ function createNPCs() {
   pandit.userData.dialogue = 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल रूपमा शुरू भयो।';
   scene.add(pandit);
   npcs.push(pandit);
-function togglePointerLock() {
-  const canvas = document.getElementById('game');
-  if (!canvas) return;
 
-  if (document.pointerLockElement === canvas) {
-    document.exitPointerLock();
-    document.body.style.cursor = 'auto';
-    canvas.style.cursor = 'auto';
-  } else {
-    canvas.requestPointerLock?.();
-    document.body.style.cursor = 'none';
-    canvas.style.cursor = 'none';
-  }
-}
   const teaOwner = createHumanoid(0x1e88e5);
   teaOwner.position.set(-18, 0, 8);
   teaOwner.userData.npcType = 'side_quest';
