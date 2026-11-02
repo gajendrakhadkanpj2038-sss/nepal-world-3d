@@ -1,5 +1,6 @@
 let scene, camera, renderer, player;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+
 const npcs = [];
 const gameState = {
   mainQuestStep: 0,
@@ -7,9 +8,8 @@ const gameState = {
 };
 
 let cameraYaw = Math.PI;
-let cameraPitch = 0.5;
-let cameraDistance = 12;
-let mouseX = 0, mouseY = 0;
+let cameraPitch = 0.55;
+let cameraDistance = 12.5;
 
 function createCanvasTexture(drawFn, size = 256) {
   const canvas = document.createElement('canvas');
@@ -26,22 +26,21 @@ function createCanvasTexture(drawFn, size = 256) {
 
 function createGrassTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#5aa34a';
+    ctx.fillStyle = '#5ca64c';
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 2000; i++) {
+    for (let i = 0; i < 3000; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      const s = 1 + Math.random() * 4;
-      const shade = 60 + Math.random() * 80;
-      ctx.fillStyle = `rgba(${shade}, ${shade + 30}, ${shade - 10}, 0.7)`;
-      ctx.fillRect(x, y, s, s);
+      const shade = 75 + Math.random() * 80;
+      ctx.fillStyle = `rgba(${shade}, ${shade + 25}, ${shade - 20}, 0.7)`;
+      ctx.fillRect(x, y, 2, 2);
     }
 
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < 800; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      ctx.strokeStyle = 'rgba(17, 90, 22, 0.35)';
+      ctx.strokeStyle = 'rgba(15, 85, 20, 0.3)';
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + 4 + Math.random() * 8, y + 5 + Math.random() * 8);
@@ -50,17 +49,38 @@ function createGrassTexture() {
   }, 256);
 }
 
-function createRockTexture() {
+function createMountainTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#8d8d8d';
+    const grad = ctx.createLinearGradient(0, 0, 0, size);
+    grad.addColorStop(0, '#f4f8ff');
+    grad.addColorStop(0.55, '#dfeaf7');
+    grad.addColorStop(1, '#beced7');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 8000; i++) {
+    for (let i = 0; i < 1500; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      const w = 2 + Math.random() * 6;
-      const h = 2 + Math.random() * 6;
-      ctx.fillStyle = `rgba(${120 + Math.random() * 50}, ${120 + Math.random() * 50}, ${120 + Math.random() * 50}, 0.55)`;
+      const r = 2 + Math.random() * 10;
+      ctx.fillStyle = `rgba(255,255,255,${0.08 + Math.random() * 0.22})`;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, 256);
+}
+
+function createRockTexture() {
+  return createCanvasTexture((ctx, size) => {
+    ctx.fillStyle = '#8f8f8f';
+    ctx.fillRect(0, 0, size, size);
+
+    for (let i = 0; i < 7000; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const w = 2 + Math.random() * 5;
+      const h = 2 + Math.random() * 5;
+      ctx.fillStyle = `rgba(${120 + Math.random() * 50}, ${120 + Math.random() * 50}, ${120 + Math.random() * 50}, 0.6)`;
       ctx.fillRect(x, y, w, h);
     }
   }, 256);
@@ -68,13 +88,14 @@ function createRockTexture() {
 
 function createTempleWallTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#b31217';
+    ctx.fillStyle = '#ba1d1d';
     ctx.fillRect(0, 0, size, size);
+
     for (let i = 0; i < 5000; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
       const s = 1 + Math.random() * 3;
-      ctx.fillStyle = `rgba(${100 + Math.random() * 30}, 0, 0, 0.55)`;
+      ctx.fillStyle = `rgba(${100 + Math.random() * 30}, 0, 0, 0.45)`;
       ctx.fillRect(x, y, s, s);
     }
   }, 256);
@@ -82,8 +103,9 @@ function createTempleWallTexture() {
 
 function createRoofTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#202020';
+    ctx.fillStyle = '#1f1f1f';
     ctx.fillRect(0, 0, size, size);
+
     for (let i = 0; i < size; i += 16) {
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.beginPath();
@@ -91,17 +113,12 @@ function createRoofTexture() {
       ctx.lineTo(i, size);
       ctx.stroke();
     }
+
     for (let j = 0; j < size; j += 16) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
       ctx.beginPath();
       ctx.moveTo(0, j);
       ctx.lineTo(size, j);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-    for (let i = 0; i < size; i += 32) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i + 16, size);
       ctx.stroke();
     }
   }, 256);
@@ -109,75 +126,41 @@ function createRoofTexture() {
 
 function createWoodTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#8f5a2c';
+    ctx.fillStyle = '#8a5a2d';
     ctx.fillRect(0, 0, size, size);
+
     for (let i = 0; i < size; i += 8) {
-      ctx.strokeStyle = 'rgba(70, 36, 12, 0.6)';
+      ctx.strokeStyle = 'rgba(55, 30, 10, 0.7)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i, size);
       ctx.stroke();
     }
-    for (let j = 0; j < size; j += 18) {
-      ctx.strokeStyle = 'rgba(255, 210, 160, 0.25)';
+
+    for (let y = 0; y < size; y += 18) {
+      ctx.strokeStyle = 'rgba(255, 210, 160, 0.22)';
       ctx.beginPath();
-      ctx.moveTo(0, j);
-      ctx.lineTo(size, j);
+      ctx.moveTo(0, y);
+      ctx.lineTo(size, y);
       ctx.stroke();
-    }
-  }, 256);
-}
-
-function createMountainTexture() {
-  return createCanvasTexture((ctx, size) => {
-    const g = ctx.createLinearGradient(0, 0, 0, size);
-    g.addColorStop(0, '#f5f7ff');
-    g.addColorStop(0.55, '#dfeaf8');
-    g.addColorStop(1, '#bfcfdb');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 2000; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const r = 2 + Math.random() * 8;
-      ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.random() * 0.25})`;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
     }
   }, 256);
 }
 
 function createLeafTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#2f9d46';
+    ctx.fillStyle = '#2e9d47';
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 1300; i++) {
+    for (let i = 0; i < 1200; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
       const r = 2 + Math.random() * 5;
-      ctx.fillStyle = `rgba(${70 + Math.random() * 60}, ${120 + Math.random() * 60}, ${45 + Math.random() * 60}, 0.7)`;
+      ctx.fillStyle = `rgba(${60 + Math.random() * 60}, ${120 + Math.random() * 60}, ${46 + Math.random() * 60}, 0.7)`;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
-    }
-  }, 256);
-}
-
-function createClothTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#d8d8d8';
-    ctx.fillRect(0, 0, size, size);
-    for (let x = 0; x < size; x += 22) {
-      ctx.fillStyle = 'rgba(0,0,0,0.08)';
-      ctx.fillRect(x, 0, 2, size);
-    }
-    for (let y = 0; y < size; y += 20) {
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(0, y, size, 2);
     }
   }, 256);
 }
@@ -186,12 +169,30 @@ function createSkinTexture() {
   return createCanvasTexture((ctx, size) => {
     ctx.fillStyle = '#f0d0a8';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 1200; i++) {
+
+    for (let i = 0; i < 900; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
       const s = 1 + Math.random() * 3;
-      ctx.fillStyle = `rgba(170, 120, 90, ${0.08 + Math.random() * 0.14})`;
+      ctx.fillStyle = `rgba(180, 120, 80, ${0.06 + Math.random() * 0.15})`;
       ctx.fillRect(x, y, s, s);
+    }
+  }, 256);
+}
+
+function createClothTexture() {
+  return createCanvasTexture((ctx, size) => {
+    ctx.fillStyle = '#d9d9d9';
+    ctx.fillRect(0, 0, size, size);
+
+    for (let x = 0; x < size; x += 22) {
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      ctx.fillRect(x, 0, 2, size);
+    }
+
+    for (let y = 0; y < size; y += 20) {
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(0, y, size, 2);
     }
   }, 256);
 }
@@ -216,31 +217,38 @@ window.initGame = function() {
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 6, 14);
 
-    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambient);
 
     const sun = new THREE.DirectionalLight(0xfff4d6, 1.3);
-    sun.position.set(60, 120, 30);
+    sun.position.set(80, 140, 40);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     scene.add(sun);
 
-    createTerrain();
+    createGround();
+    createRoad();
     createHimalayas();
     createTemple();
-    createVillage();
+    createHouses();
     createTrees();
+    createClouds();
     createNPCs();
     createPlayer();
-    setupControls();
 
+    setupControls();
     window.addEventListener('resize', onWindowResize);
+
     animate();
     console.log('Game initialized successfully');
   } catch (error) {
@@ -248,20 +256,39 @@ window.initGame = function() {
   }
 };
 
-function createTerrain() {
+function createGround() {
   const groundTexture = createGrassTexture();
-  groundTexture.repeat.set(35, 35);
+  groundTexture.repeat.set(30, 30);
 
-  const groundMaterial = new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     map: groundTexture,
     roughness: 0.95,
     metalness: 0.02
   });
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(350, 350, 64, 64), groundMaterial);
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  scene.add(ground);
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(350, 350, 64, 64),
+    material
+  );
+  plane.rotation.x = -Math.PI / 2;
+  plane.receiveShadow = true;
+  scene.add(plane);
+}
+
+function createRoad() {
+  const roadTexture = createWoodTexture();
+  roadTexture.repeat.set(12, 1);
+
+  const road = new THREE.Mesh(
+    new THREE.BoxGeometry(18, 0.2, 140),
+    new THREE.MeshStandardMaterial({
+      map: roadTexture,
+      roughness: 0.9
+    })
+  );
+  road.position.set(0, 0.12, 0);
+  road.receiveShadow = true;
+  scene.add(road);
 }
 
 function createHimalayas() {
@@ -270,7 +297,7 @@ function createHimalayas() {
   for (let i = 0; i < 12; i++) {
     const h = 45 + Math.random() * 40;
     const mountain = new THREE.Mesh(
-      new THREE.ConeGeometry(18 + Math.random() * 18, h, 7),
+      new THREE.ConeGeometry(20 + Math.random() * 16, h, 7),
       new THREE.MeshStandardMaterial({
         map: mountainTexture,
         roughness: 1,
@@ -279,7 +306,7 @@ function createHimalayas() {
     );
 
     const angle = (i / 12) * Math.PI * 2;
-    const radius = 120 + Math.random() * 20;
+    const radius = 125 + Math.random() * 20;
     mountain.position.set(
       Math.cos(angle) * radius,
       h * 0.45,
@@ -298,39 +325,59 @@ function createTemple() {
   const wallTexture = createTempleWallTexture();
   const roofTexture = createRoofTexture();
   const goldTexture = createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#ffd84d';
+    ctx.fillStyle = '#ffd74b';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 1500; i++) {
-      ctx.fillStyle = `rgba(255, 204, 0, ${0.15 + Math.random() * 0.4})`;
+
+    for (let i = 0; i < 1200; i++) {
+      ctx.fillStyle = `rgba(255, 210, 80, ${0.15 + Math.random() * 0.35})`;
       ctx.fillRect(Math.random() * size, Math.random() * size, 4, 4);
     }
   }, 256);
-  const woodTexture = createWoodTexture();
 
-  const baseMat = new THREE.MeshStandardMaterial({ map: baseTexture, roughness: 0.9 });
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture, roughness: 0.8 });
-  const roofMat = new THREE.MeshStandardMaterial({ map: roofTexture, roughness: 0.9 });
-  const goldMat = new THREE.MeshStandardMaterial({ map: goldTexture, emissive: 0x4a3600, roughness: 0.4 });
-  const stairsMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.85 });
+  const baseMaterial = new THREE.MeshStandardMaterial({
+    map: baseTexture,
+    roughness: 0.9
+  });
 
-  const base = new THREE.Mesh(new THREE.BoxGeometry(16, 2, 16), baseMat);
+  const wallMaterial = new THREE.MeshStandardMaterial({
+    map: wallTexture,
+    roughness: 0.8
+  });
+
+  const roofMaterial = new THREE.MeshStandardMaterial({
+    map: roofTexture,
+    roughness: 0.9
+  });
+
+  const goldMaterial = new THREE.MeshStandardMaterial({
+    map: goldTexture,
+    emissive: 0x4b3700,
+    roughness: 0.45
+  });
+
+  const stairsMaterial = new THREE.MeshStandardMaterial({
+    map: createWoodTexture(),
+    roughness: 0.85
+  });
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(16, 2, 16), baseMaterial);
   base.position.y = 1;
   temple.add(base);
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(9, 8, 9), wallMat);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(9, 8, 9), wallMaterial);
   body.position.y = 6;
   temple.add(body);
 
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(8.2, 5, 4), roofMat);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(8.2, 5, 4), roofMaterial);
   roof.position.y = 12.2;
   roof.rotation.y = Math.PI / 4;
   temple.add(roof);
 
-  const gajur = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 8), goldMat);
+  const gajur = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 8), goldMaterial);
   gajur.position.y = 15.5;
   temple.add(gajur);
 
-  const stairs = new THREE.Mesh(new THREE.BoxGeometry(5, 0.7, 2), stairsMat);
+  const stairs = new THREE.Mesh(new THREE.BoxGeometry(5, 0.7, 2), stairsMaterial);
   stairs.position.set(0, 1.5, 9);
   temple.add(stairs);
 
@@ -338,44 +385,56 @@ function createTemple() {
   scene.add(temple);
 }
 
-function createVillage() {
+function createHouses() {
   const housePositions = [
     { x: -22, z: 10 },
     { x: 28, z: 14 },
-    { x: -10, z: 25 },
-    { x: 18, z: -18 }
+    { x: 0, z: 28 }
   ];
 
   const wallTexture = createWoodTexture();
   const roofTexture = createRoofTexture();
-  const doorTexture = createWoodTexture();
 
   housePositions.forEach((pos) => {
     const house = new THREE.Group();
 
-    const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture, roughness: 0.9 });
-    const roofMat = new THREE.MeshStandardMaterial({ map: roofTexture, roughness: 0.9 });
-    const doorMat = new THREE.MeshStandardMaterial({ map: doorTexture, roughness: 0.8 });
+    const wallMaterial = new THREE.MeshStandardMaterial({
+      map: wallTexture,
+      roughness: 0.9
+    });
 
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), wallMat);
+    const roofMaterial = new THREE.MeshStandardMaterial({
+      map: roofTexture,
+      roughness: 0.9
+    });
+
+    const doorMaterial = new THREE.MeshStandardMaterial({
+      map: createWoodTexture(),
+      roughness: 0.8
+    });
+
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), wallMaterial);
     wall.position.y = 2;
     house.add(wall);
 
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 3.5, 4), roofMat);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 3.6, 4), roofMaterial);
     roof.position.y = 5.9;
     roof.rotation.y = Math.PI / 4;
     house.add(roof);
 
-    const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.4), doorMat);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.4), doorMaterial);
     door.position.set(0, 1.1, 3.1);
     house.add(door);
 
-    const teaStand = new THREE.Mesh(
-      new THREE.BoxGeometry(2.5, 1.5, 2.5),
-      new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.8 })
+    const stall = new THREE.Mesh(
+      new THREE.BoxGeometry(2.4, 1.5, 2.4),
+      new THREE.MeshStandardMaterial({
+        map: createWoodTexture(),
+        roughness: 0.85
+      })
     );
-    teaStand.position.set(0, 0.75, 3.8);
-    house.add(teaStand);
+    stall.position.set(0, 0.75, 3.9);
+    house.add(stall);
 
     house.position.set(pos.x, 0, pos.z);
     scene.add(house);
@@ -390,25 +449,63 @@ function createTrees() {
     const tree = new THREE.Group();
 
     const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.6, 3.2, 8),
-      new THREE.MeshStandardMaterial({ map: trunkTexture, roughness: 0.9 })
+      new THREE.CylinderGeometry(0.48, 0.6, 3.4, 8),
+      new THREE.MeshStandardMaterial({
+        map: trunkTexture,
+        roughness: 0.9
+      })
     );
-    trunk.position.y = 1.6;
+    trunk.position.y = 1.7;
     tree.add(trunk);
 
     const leaves = new THREE.Mesh(
-      new THREE.SphereGeometry(2.2, 12, 12),
-      new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.8 })
+      new THREE.SphereGeometry(2.3, 12, 12),
+      new THREE.MeshStandardMaterial({
+        map: leafTexture,
+        roughness: 0.8
+      })
     );
-    leaves.position.y = 4.4;
+    leaves.position.y = 4.5;
     tree.add(leaves);
 
     const angle = (i / 18) * Math.PI * 2;
-    const radius = 42 + Math.random() * 30;
-    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 20;
-    const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 20;
+    const radius = 42 + Math.random() * 28;
+    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 18;
+    const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 18;
     tree.position.set(x, 0, z);
     scene.add(tree);
+  }
+}
+
+function createClouds() {
+  const cloudMaterial = new THREE.MeshStandardMaterial({
+    color: 0xf7f9ff,
+    roughness: 1,
+    transparent: true,
+    opacity: 0.8
+  });
+
+  for (let i = 0; i < 8; i++) {
+    const cloud = new THREE.Group();
+
+    const puff1 = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 16), cloudMaterial);
+    puff1.position.set(-6, 0, 0);
+    cloud.add(puff1);
+
+    const puff2 = new THREE.Mesh(new THREE.SphereGeometry(3.5, 16, 16), cloudMaterial);
+    puff2.position.set(4, 0, 0);
+    cloud.add(puff2);
+
+    const puff3 = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), cloudMaterial);
+    puff3.position.set(0, 1.5, 0);
+    cloud.add(puff3);
+
+    cloud.position.set(
+      (Math.random() - 0.5) * 220,
+      30 + Math.random() * 30,
+      -50 - Math.random() * 60
+    );
+    scene.add(cloud);
   }
 }
 
@@ -420,25 +517,37 @@ function createHumanoid(color) {
   const topiTexture = createCanvasTexture((ctx, size) => {
     ctx.fillStyle = '#5d0a0a';
     ctx.fillRect(0, 0, size, size);
+
     for (let i = 0; i < 500; i++) {
       ctx.fillStyle = `rgba(255,255,255,${0.03 + Math.random() * 0.1})`;
       ctx.fillRect(Math.random() * size, Math.random() * size, 3, 3);
     }
   }, 256);
 
-  const bodyMat = new THREE.MeshStandardMaterial({ map: shirtTexture, roughness: 0.9 });
-  const skinMat = new THREE.MeshStandardMaterial({ map: skinTexture, roughness: 0.9 });
-  const topiMat = new THREE.MeshStandardMaterial({ map: topiTexture, roughness: 0.9 });
+  const bodyMaterial = new THREE.MeshStandardMaterial({
+    map: shirtTexture,
+    roughness: 0.9
+  });
 
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.6), bodyMat);
+  const skinMaterial = new THREE.MeshStandardMaterial({
+    map: skinTexture,
+    roughness: 0.9
+  });
+
+  const topiMaterial = new THREE.MeshStandardMaterial({
+    map: topiTexture,
+    roughness: 0.9
+  });
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.6), bodyMaterial);
   body.position.y = 1.15;
   group.add(body);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 18), skinMat);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 18), skinMaterial);
   head.position.y = 2.1;
   group.add(head);
 
-  const topi = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.22), topiMat);
+  const topi = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.22), topiMaterial);
   topi.position.y = 2.45;
   group.add(topi);
 
@@ -489,12 +598,13 @@ function setupControls() {
     if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRight = false;
   });
 
-  window.addEventListener('mousemove', (e) => {
-    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-    mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-
-    cameraYaw -= e.movementX * 0.0025;
-    cameraPitch = THREE.MathUtils.clamp(cameraPitch - e.movementY * 0.0018, -0.9, 1.2);
+  window.addEventListener('mousemove', (event) => {
+    cameraYaw -= event.movementX * 0.0025;
+    cameraPitch = THREE.MathUtils.clamp(
+      cameraPitch - event.movementY * 0.0018,
+      -0.9,
+      1.2
+    );
   });
 }
 
@@ -503,8 +613,10 @@ function checkInteractions() {
     if (player.position.distanceTo(npc.position) < 4) {
       const title = document.getElementById('dialogue-title');
       const text = document.getElementById('dialogue-text');
+
       title.innerText = npc.userData.name;
       text.innerText = npc.userData.dialogue;
+
       document.getElementById('dialogue-modal').style.display = 'block';
 
       if (npc.userData.type === 'main_quest' && gameState.mainQuestStep === 0) {
@@ -538,6 +650,10 @@ function animate() {
   if (moveBackward) player.position.z += speed;
   if (moveLeft) player.position.x -= speed;
   if (moveRight) player.position.x += speed;
+
+  const maxDistance = 90;
+  player.position.x = THREE.MathUtils.clamp(player.position.x, -maxDistance, maxDistance);
+  player.position.z = THREE.MathUtils.clamp(player.position.z, -maxDistance, maxDistance);
 
   const desiredX = player.position.x + Math.sin(cameraYaw) * cameraDistance;
   const desiredY = player.position.y + Math.sin(cameraPitch) * cameraDistance * 0.9 + 5.5;
