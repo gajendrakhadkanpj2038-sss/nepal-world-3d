@@ -1,4 +1,50 @@
 // NEPAL WORLD 3D - Safe startup + advanced Himalayan village
+let cameraYaw = Math.PI;
+let cameraPitch = 0.45;
+let cameraDistance = 12;
+let cameraHeight = 5.5;
+let pointerLocked = false;
+window.addEventListener('mousemove', (event) => {
+  if (document.pointerLockElement !== document.body && !pointerLocked) return;
+
+  cameraYaw -= event.movementX * 0.0025;
+  cameraPitch = THREE.MathUtils.clamp(
+    cameraPitch - event.movementY * 0.0018,
+    -0.9,
+    1.2
+  );
+});
+let mouseX = 0;
+let mouseY = 0;
+
+window.addEventListener('mousemove', (event) => {
+  mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+  mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  cameraYaw -= event.movementX * 0.0025;
+  cameraPitch = THREE.MathUtils.clamp(
+    cameraPitch - event.movementY * 0.0018,
+    -0.9,
+    1.2
+  );
+});
+const desiredOffsetX = Math.sin(cameraYaw) * cameraDistance;
+const desiredOffsetY = Math.sin(cameraPitch) * cameraDistance * 0.8 + cameraHeight;
+const desiredOffsetZ = Math.cos(cameraYaw) * cameraDistance;
+
+const desiredCameraX = player.position.x + desiredOffsetX;
+const desiredCameraY = player.position.y + desiredOffsetY;
+const desiredCameraZ = player.position.z + desiredOffsetZ;
+
+camera.position.x += (desiredCameraX - camera.position.x) * 0.12;
+camera.position.y += (desiredCameraY - camera.position.y) * 0.12;
+camera.position.z += (desiredCameraZ - camera.position.z) * 0.12;
+
+camera.lookAt(
+  player.position.x,
+  player.position.y + 1.6,
+  player.position.z
+);
 let scene, camera, renderer, player, clock;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 let sunLight, moonLight;
