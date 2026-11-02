@@ -609,7 +609,20 @@ function createNPCs() {
   pandit.userData.dialogue = 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल रूपमा शुरू भयो।';
   scene.add(pandit);
   npcs.push(pandit);
+function togglePointerLock() {
+  const canvas = document.getElementById('game');
+  if (!canvas) return;
 
+  if (document.pointerLockElement === canvas) {
+    document.exitPointerLock();
+    document.body.style.cursor = 'auto';
+    canvas.style.cursor = 'auto';
+  } else {
+    canvas.requestPointerLock?.();
+    document.body.style.cursor = 'none';
+    canvas.style.cursor = 'none';
+  }
+}
   const teaOwner = createHumanoid(0x1e88e5);
   teaOwner.position.set(-18, 0, 8);
   teaOwner.userData.npcType = 'side_quest';
