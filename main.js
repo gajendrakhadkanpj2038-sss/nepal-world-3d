@@ -7,7 +7,7 @@ const gameState = {
   sideQuests: { teaStall: false }
 };
 
-let cameraYaw = Math.PI;
+let cameraYaw = 0;
 let cameraPitch = 0.52;
 let cameraDistance = 12.5;
 let isGameStarted = false;
@@ -217,14 +217,15 @@ window.initGame = function() {
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x88c9f6);
-    scene.fog = new THREE.FogExp2(0xdfefff, 0.004);
+    scene.fog = new THREE.FogExp2(0xdfefff, 0.0038);
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 6, 14);
 
     renderer = new THREE.WebGLRenderer({
       canvas: canvas,
-      antialias: true
+      antialias: true,
+      alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -232,13 +233,17 @@ window.initGame = function() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.75);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xfff3d6, 1.35);
+    const sun = new THREE.DirectionalLight(0xfff3d6, 1.45);
     sun.position.set(90, 140, 40);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -120;
+    sun.shadow.camera.right = 120;
+    sun.shadow.camera.top = 120;
+    sun.shadow.camera.bottom = -120;
     scene.add(sun);
 
     clock = new THREE.Clock();
@@ -256,6 +261,7 @@ window.initGame = function() {
     setupControls();
     window.addEventListener('resize', onWindowResize);
 
+    updateQuestUI('मुख्य मिसन (Main Quest)', 'बागेश्वरी मन्दिरमा मुख्य पुजारीसँग भेट्नुहोस् र आशीर्वाद लिनुहोस्');
     animate();
     console.log('Game initialized successfully');
   } catch (error) {
@@ -584,7 +590,7 @@ function createNPCs() {
   pandit.position.set(0, 0, -11);
   pandit.userData.npcType = 'main_quest';
   pandit.userData.name = 'पुजारी (Main Quest)';
-  pandit.userData.dialogue = 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल भयो!';
+  pandit.userData.dialogue = 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल गर्नको लागि सधैँ धैर्य र शान्ति आवश्यक छ।';
   scene.add(pandit);
   npcs.push(pandit);
 
@@ -619,7 +625,16 @@ function setupControls() {
     if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRight = false;
   });
 
-  window.addEventListener('mousemove', (event) => {
+  const canvas = document.getElementById('game');
+
+  document.addEventListener('click', () => {
+    if (canvas && document.pointerLockElement !== canvas) {
+      canvas.requestPointerLock?.();
+    }
+  });
+
+  document.addEventListener('mousemove', (event) => {
+    if (document.pointerLockElement !== canvas) return;
     cameraYaw -= event.movementX * 0.0025;
     cameraPitch = THREE.MathUtils.clamp(
       cameraPitch - event.movementY * 0.0018,
@@ -631,8 +646,8 @@ function setupControls() {
 
 function getMovementVector() {
   const forward = {
-    x: -Math.sin(cameraYaw),
-    z: -Math.cos(cameraYaw)
+    x: Math.sin(cameraYaw),
+    z: Math.cos(cameraYaw)
   };
 
   const right = {
@@ -684,24 +699,43 @@ function updateHumanoidAnimation(character, isMoving, dt) {
   character.userData.rightLeg.rotation.x = swing;
 }
 
+function updateQuestUI(title, description) {
+  const qTitle = document.getElementById('q-title');
+  const qDesc = document.getElementById('q-desc');
+  if (qTitle) qTitle.innerText = title;
+  if (qDesc) qDesc.innerText = description;
+}
+
 function checkInteractions() {
-  npcs.forEach((npc) => {
-    if (player.position.distanceTo(npc.position) < 4) {
-      const title = document.getElementById('dialogue-title');
-      const text = document.getElementById('dialogue-text');
+  const nearNpc = npcs.find((npc) => player.position.distanceTo(npc.position) < 4);
+  if (!nearNpc) {
+    closeDialogue();
+    return;
+  }
 
-      title.innerText = npc.userData.name;
-      text.innerText = npc.userData.dialogue;
+  const title = document.getElementById('dialogue-title');
+  const text = document.getElementById('dialogue-text');
 
-      document.getElementById('dialogue-modal').style.display = 'block';
+  title.innerText = nearNpc.userData.name;
+  text.innerText = nearNpc.userData.dialogue;
+  document.getElementById('dialogue-modal').style.display = 'block';
 
-      if (npc.userData.npcType === 'main_quest' && gameState.mainQuestStep === 0) {
-        gameState.mainQuestStep = 1;
-        document.getElementById('q-title').innerText = 'Side Quest: चिया पसल';
-        document.getElementById('q-desc').innerText = 'गाउँको चिया पसलका दाइसँग भेट्नुहोस्।';
-      }
-    }
-  });
+  if (nearNpc.userData.npcType === 'main_quest' && gameState.mainQuestStep === 0) {
+    gameState.mainQuestStep = 1;
+    updateQuestUI('मुख्य मिसन (Main Quest)', 'अब दाइसँग चिया पसलमा जानुहोस् र चिया माग्नुहोस्।');
+    return;
+  }
+
+  if (nearNpc.userData.npcType === 'side_quest' && gameState.mainQuestStep === 1) {
+    gameState.mainQuestStep = 2;
+    gameState.sideQuests.teaStall = true;
+    updateQuestUI('मिशन पूरा भयो (Quest Complete)', 'तपाईंले चिया पसलको मिसन पूरा गर्नुभयो। अब मन्दिरको पुजारीसँग फर्कनुहोस्।');
+    return;
+  }
+
+  if (gameState.mainQuestStep >= 2) {
+    updateQuestUI('मिशन पूरा भयो (Quest Complete)', 'तपाईंले सबै मुख्य उद्देश्य पूरा गर्नुभयो। नेपालको यात्रा जारी राख्नुहोस्!');
+  }
 }
 
 window.closeDialogue = function() {
@@ -744,15 +778,16 @@ function animate() {
     npc.userData.rightArm.rotation.x -= idle * 0.01;
   });
 
-  const desiredX = player.position.x + Math.sin(cameraYaw) * cameraDistance;
-  const desiredY = player.position.y + Math.sin(cameraPitch) * cameraDistance * 0.9 + 5.5;
-  const desiredZ = player.position.z + Math.cos(cameraYaw) * cameraDistance;
+  const cameraX = player.position.x - Math.sin(cameraYaw) * cameraDistance;
+  const cameraY = player.position.y + 5.2 + Math.sin(cameraPitch) * cameraDistance * 0.8;
+  const cameraZ = player.position.z - Math.cos(cameraYaw) * cameraDistance;
 
-  camera.position.x += (desiredX - camera.position.x) * 0.12;
-  camera.position.y += (desiredY - camera.position.y) * 0.12;
-  camera.position.z += (desiredZ - camera.position.z) * 0.12;
+  camera.position.x += (cameraX - camera.position.x) * 0.12;
+  camera.position.y += (cameraY - camera.position.y) * 0.12;
+  camera.position.z += (cameraZ - camera.position.z) * 0.12;
 
   camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
 
   renderer.render(scene, camera);
 }
+
