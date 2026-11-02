@@ -1,649 +1,296 @@
-// NEPAL WORLD 3D - Safe startup + advanced Himalayan village
-let cameraYaw = Math.PI;
-let cameraPitch = 0.45;
-let cameraDistance = 12;
-let cameraHeight = 5.5;
-let pointerLocked = false;
-window.addEventListener('mousemove', (event) => {
-  if (document.pointerLockElement !== document.body && !pointerLocked) return;
-
-  cameraYaw -= event.movementX * 0.0025;
-  cameraPitch = THREE.MathUtils.clamp(
-    cameraPitch - event.movementY * 0.0018,
-    -0.9,
-    1.2
-  );
-});
-let mouseX = 0;
-let mouseY = 0;
-
-window.addEventListener('mousemove', (event) => {
-  mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-  mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  cameraYaw -= event.movementX * 0.0025;
-  cameraPitch = THREE.MathUtils.clamp(
-    cameraPitch - event.movementY * 0.0018,
-    -0.9,
-    1.2
-  );
-});
-const desiredOffsetX = Math.sin(cameraYaw) * cameraDistance;
-const desiredOffsetY = Math.sin(cameraPitch) * cameraDistance * 0.8 + cameraHeight;
-const desiredOffsetZ = Math.cos(cameraYaw) * cameraDistance;
-
-const desiredCameraX = player.position.x + desiredOffsetX;
-const desiredCameraY = player.position.y + desiredOffsetY;
-const desiredCameraZ = player.position.z + desiredOffsetZ;
-
-camera.position.x += (desiredCameraX - camera.position.x) * 0.12;
-camera.position.y += (desiredCameraY - camera.position.y) * 0.12;
-camera.position.z += (desiredCameraZ - camera.position.z) * 0.12;
-
-camera.lookAt(
-  player.position.x,
-  player.position.y + 1.6,
-  player.position.z
-);
-let scene, camera, renderer, player, clock;
+let scene, camera, renderer, player;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-let sunLight, moonLight;
-let clouds = [];
-let worldWater = null;
-
+const npcs = [];
 const gameState = {
   mainQuestStep: 0,
   sideQuests: { teaStall: false }
 };
 
-const npcs = [];
-const worldProps = [];
+let cameraYaw = Math.PI;
+let cameraPitch = 0.5;
+let cameraDistance = 12;
+let mouseX = 0, mouseY = 0;
 
 window.initGame = function() {
-  const canvas = document.getElementById('game');
-  if (!canvas) {
-    console.error('Canvas #game not found.');
-    return;
-  }
-
-  if (!window.THREE) {
-    console.error('Three.js failed to load. Check the CDN or browser network.');
-    return;
-  }
-
   try {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9ad8ff);
-    scene.fog = new THREE.Fog(0xbfe7ff, 28, 220);
+    const canvas = document.getElementById('game');
+    if (!canvas) {
+      console.error("Canvas not found");
+      return;
+    }
 
-    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
-    camera.position.set(0, 7, 18);
+    if (!window.THREE) {
+      console.error("Three.js not loaded");
+      return;
+    }
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.FogExp2(0xcfe8ff, 0.004);
+
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 6, 14);
 
     renderer = new THREE.WebGLRenderer({
       canvas: canvas,
-      antialias: true,
-      alpha: false
+      antialias: true
     });
-
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x9ad8ff, 1);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputEncoding = THREE.sRGBEncoding;
 
-    clock = new THREE.Clock();
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambient);
 
-    const hemi = new THREE.HemisphereLight(0xdff5ff, 0x1d401b, 0.9);
-    scene.add(hemi);
-
-    sunLight = new THREE.DirectionalLight(0xfff2bf, 1.4);
-    sunLight.position.set(80, 120, 40);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
-    sunLight.shadow.camera.left = -120;
-    sunLight.shadow.camera.right = 120;
-    sunLight.shadow.camera.top = 120;
-    sunLight.shadow.camera.bottom = -120;
-    scene.add(sunLight);
-
-    moonLight = new THREE.DirectionalLight(0x8ab8ff, 0.25);
-    moonLight.position.set(-60, 60, -40);
-    scene.add(moonLight);
-
-    const sun = new THREE.Mesh(
-      new THREE.SphereGeometry(6, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffd76a })
-    );
-    sun.position.set(90, 110, 30);
+    const sun = new THREE.DirectionalLight(0xfff4d6, 1.3);
+    sun.position.set(60, 120, 30);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
     scene.add(sun);
 
-    createSkyClouds();
     createTerrain();
+    createHimalayas();
+    createTemple();
     createVillage();
+    createTrees();
     createNPCs();
     createPlayer();
-
     setupControls();
+
     window.addEventListener('resize', onWindowResize);
 
-    renderer.setAnimationLoop(animate);
-
-  } catch (err) {
-    console.error('Failed to initialize Three.js scene:', err);
+    animate();
+    console.log("Game initialized successfully");
+  } catch (error) {
+    console.error("Game initialization failed:", error);
   }
 };
 
-function createSkyClouds() {
-  const material = new THREE.MeshStandardMaterial({
-    color: 0xf2f7ff,
-    roughness: 0.95,
-    metalness: 0
-  });
+function makeNoiseTexture(baseColor, accentColor) {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
 
-  for (let i = 0; i < 12; i++) {
-    const cloud = new THREE.Group();
-    const puffCount = 5 + Math.floor(Math.random() * 5);
-
-    for (let j = 0; j < puffCount; j++) {
-      const puff = new THREE.Mesh(
-        new THREE.SphereGeometry(2 + Math.random() * 2.5, 18, 18),
-        material
-      );
-      puff.position.set((j - puffCount / 2) * 2.2, Math.random() * 1.4, Math.random() * 2);
-      cloud.add(puff);
+  const ctx = canvas.getContext('2d');
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const noise = Math.random() * 30;
+      const r = Math.max(0, Math.min(255, baseColor.r + noise));
+      const g = Math.max(0, Math.min(255, baseColor.g + noise));
+      const b = Math.max(0, Math.min(255, baseColor.b + noise));
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillRect(x, y, 1, 1);
     }
-
-    cloud.position.set(
-      -80 + Math.random() * 160,
-      40 + Math.random() * 36,
-      -90 - Math.random() * 70
-    );
-    cloud.userData = { speed: 0.5 + Math.random() * 0.7 };
-    scene.add(cloud);
-    clouds.push(cloud);
   }
+
+  for (let i = 0; i < 2000; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const r = 2 + Math.random() * 4;
+    ctx.fillStyle = accentColor;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return new THREE.CanvasTexture(canvas);
 }
 
 function createTerrain() {
-  const geometry = new THREE.PlaneGeometry(400, 400, 220, 220);
-  geometry.rotateX(-Math.PI / 2);
+  const groundTexture = makeNoiseTexture({ r: 70, g: 125, b: 60 }, '#2a6d2a');
+  groundTexture.wrapS = THREE.RepeatWrapping;
+  groundTexture.wrapT = THREE.RepeatWrapping;
+  groundTexture.repeat.set(30, 30);
 
-  const positions = geometry.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    const x = positions.getX(i);
-    const z = positions.getZ(i);
-    const distance = Math.sqrt(x * x + z * z);
-    const hill = Math.sin(x * 0.12) * 2.5 + Math.cos(z * 0.09) * 2.2 + Math.max(0, 18 - distance * 0.08);
-    positions.setY(i, hill);
-  }
-  geometry.computeVertexNormals();
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    map: groundTexture,
+    roughness: 0.95,
+    metalness: 0.02
+  });
 
-  const ground = new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({
-      color: 0x497b3d,
-      roughness: 1,
-      metalness: 0.05
-    })
-  );
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(350, 350, 64, 64), groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
-
-  const river = new THREE.Mesh(
-    new THREE.PlaneGeometry(140, 46, 1, 1),
-    new THREE.MeshPhysicalMaterial({
-      color: 0x62b9e3,
-      transparent: true,
-      opacity: 0.9,
-      roughness: 0.15,
-      metalness: 0.0,
-      clearcoat: 1,
-      clearcoatRoughness: 0.2,
-      transmission: 0.1,
-      emissive: 0x1a80b5,
-      emissiveIntensity: 0.15
-    })
-  );
-  river.rotation.x = -Math.PI / 2;
-  river.position.set(0, 0.55, 36);
-  river.receiveShadow = true;
-  worldWater = river;
-  scene.add(river);
-
-  const stonePath = new THREE.Mesh(
-    new THREE.BoxGeometry(18, 0.4, 54),
-    new THREE.MeshStandardMaterial({
-      color: 0x9a8a7b,
-      roughness: 1,
-      map: createStoneTexture()
-    })
-  );
-  stonePath.position.set(0, 0.2, 7);
-  stonePath.rotation.y = Math.PI / 12;
-  stonePath.receiveShadow = true;
-  scene.add(stonePath);
 }
 
-function createStoneTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
+function createHimalayas() {
+  for (let i = 0; i < 12; i++) {
+    const h = 45 + Math.random() * 40;
+    const mountain = new THREE.Mesh(
+      new THREE.ConeGeometry(18 + Math.random() * 18, h, 7),
+      new THREE.MeshStandardMaterial({
+        color: 0xe7f0ff,
+        roughness: 1,
+        metalness: 0
+      })
+    );
 
-  ctx.fillStyle = '#a79b92';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  for (let i = 0; i < 5000; i++) {
-    const x = Math.random() * canvas.width;
-    const y = Math.random() * canvas.height;
-    const w = 2 + Math.random() * 8;
-    const h = 2 + Math.random() * 8;
-    ctx.fillStyle = i % 2 === 0 ? '#91857d' : '#b7adaa';
-    ctx.fillRect(x, y, w, h);
+    const angle = (i / 12) * Math.PI * 2;
+    const radius = 120 + Math.random() * 20;
+    mountain.position.set(
+      Math.cos(angle) * radius,
+      h * 0.45,
+      Math.sin(angle) * radius
+    );
+    mountain.castShadow = true;
+    mountain.receiveShadow = true;
+    scene.add(mountain);
   }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(3, 3);
-  return texture;
-}
-
-function createVillage() {
-  createTemple();
-  createHouses();
-  createTeaStall();
-  createTrees();
-  createLanterns();
-  createFence();
-  createMonument();
-  createStonePillars();
 }
 
 function createTemple() {
   const temple = new THREE.Group();
 
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(16, 2.6, 16),
-    new THREE.MeshStandardMaterial({ color: 0x8f623b, roughness: 1 })
-  );
-  base.position.y = 1.3;
-  base.castShadow = true;
-  base.receiveShadow = true;
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x8c5a2b, roughness: 0.9 });
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xb31217, roughness: 0.8 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x1f1f1f, roughness: 0.9 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd84d, emissive: 0x4a3600, roughness: 0.4 });
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(16, 2, 16), baseMat);
+  base.position.y = 1;
   temple.add(base);
 
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(10, 8.5, 10),
-    new THREE.MeshStandardMaterial({ color: 0xc94c3d, roughness: 0.9, metalness: 0.05 })
-  );
-  body.position.y = 6.4;
-  body.castShadow = true;
-  body.receiveShadow = true;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(9, 8, 9), wallMat);
+  body.position.y = 6;
   temple.add(body);
 
-  const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x1e1e1e, roughness: 0.8 });
-  for (let i = 0; i < 3; i++) {
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(8.5 - i * 1.2, 2.8, 4), roofMaterial);
-    roof.position.y = 12 + i * 1.8;
-    roof.rotation.y = Math.PI / 4;
-    roof.castShadow = true;
-    temple.add(roof);
-  }
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(8.2, 5, 4), roofMat);
+  roof.position.y = 12.2;
+  roof.rotation.y = Math.PI / 4;
+  temple.add(roof);
 
-  const gajur = new THREE.Mesh(
-    new THREE.ConeGeometry(1.1, 3, 8),
-    new THREE.MeshStandardMaterial({ color: 0xffd43a, emissive: 0x7a5b00, emissiveIntensity: 0.2 })
-  );
-  gajur.position.y = 16.4;
+  const gajur = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 8), goldMat);
+  gajur.position.y = 15.5;
   temple.add(gajur);
 
-  const door = new THREE.Mesh(
-    new THREE.BoxGeometry(2.2, 4.2, 0.8),
-    new THREE.MeshStandardMaterial({ color: 0x4c2b17, roughness: 0.9 })
-  );
-  door.position.set(0, 2.8, 5.15);
-  temple.add(door);
-
-  const bell = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.45, 0.5, 1.3, 18),
-    new THREE.MeshStandardMaterial({ color: 0xf3d48d, metalness: 0.8, roughness: 0.3 })
-  );
-  bell.position.set(0, 18.5, 0);
-  temple.add(bell);
-
-  const steps = new THREE.Mesh(
-    new THREE.BoxGeometry(11, 0.7, 3.8),
-    new THREE.MeshStandardMaterial({ color: 0xc7b497, roughness: 1 })
-  );
-  steps.position.set(0, 0.35, 8.9);
-  temple.add(steps);
+  const stairs = new THREE.Mesh(new THREE.BoxGeometry(5, 0.7, 2), new THREE.MeshStandardMaterial({ color: 0xd7c29d }));
+  stairs.position.set(0, 1.5, 9);
+  temple.add(stairs);
 
   temple.position.set(0, 0, -20);
   scene.add(temple);
 }
 
-function createHouses() {
-  const positions = [
-    { x: -24, z: 8, rot: Math.PI / 7 },
-    { x: 22, z: 14, rot: -Math.PI / 7 },
-    { x: -12, z: 24, rot: Math.PI / 5 },
-    { x: 32, z: -8, rot: -Math.PI / 6 },
-    { x: 18, z: -20, rot: Math.PI / 8 }
+function createVillage() {
+  const housePositions = [
+    { x: -22, z: 10 },
+    { x: 28, z: 14 },
+    { x: -10, z: 25 },
+    { x: 18, z: -18 }
   ];
 
-  positions.forEach((pos) => {
+  housePositions.forEach((pos) => {
     const house = new THREE.Group();
 
-    const wall = new THREE.Mesh(
-      new THREE.BoxGeometry(6.4, 4.5, 6.4),
-      new THREE.MeshStandardMaterial({ color: 0xd08f3b, roughness: 0.9 })
-    );
-    wall.position.y = 2.25;
-    wall.castShadow = true;
-    wall.receiveShadow = true;
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xd38a4a, roughness: 0.9 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x3b3b3b, roughness: 0.9 });
+
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), wallMat);
+    wall.position.y = 2;
     house.add(wall);
 
-    const roof = new THREE.Mesh(
-      new THREE.ConeGeometry(5.6, 3.1, 4),
-      new THREE.MeshStandardMaterial({ color: 0x343434, roughness: 0.85 })
-    );
-    roof.position.y = 6.1;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 3.5, 4), roofMat);
+    roof.position.y = 5.9;
     roof.rotation.y = Math.PI / 4;
-    roof.castShadow = true;
     house.add(roof);
 
     const door = new THREE.Mesh(
-      new THREE.BoxGeometry(1.5, 2.8, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0x5c3518, roughness: 0.85 })
+      new THREE.BoxGeometry(1.5, 2.2, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x7a4b2a })
     );
-    door.position.set(0, 1.4, 3.25);
+    door.position.set(0, 1.1, 3.1);
     house.add(door);
 
-    for (const x of [-1.8, 1.8]) {
-      const win = new THREE.Mesh(
-        new THREE.BoxGeometry(1.1, 1.1, 0.12),
-        new THREE.MeshStandardMaterial({ color: 0xf8d791, emissive: 0xc98919, emissiveIntensity: 0.2 })
-      );
-      win.position.set(x, 2.7, 3.2);
-      house.add(win);
-    }
-
-    const chimney = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 2.2, 0.9),
-      new THREE.MeshStandardMaterial({ color: 0x7a7a7a, roughness: 0.8 })
+    const teaStand = new THREE.Mesh(
+      new THREE.BoxGeometry(2.5, 1.5, 2.5),
+      new THREE.MeshStandardMaterial({ color: 0x8a5a2d })
     );
-    chimney.position.set(2.1, 6, 0.6);
-    house.add(chimney);
+    teaStand.position.set(0, 0.75, 3.8);
+    house.add(teaStand);
 
     house.position.set(pos.x, 0, pos.z);
-    house.rotation.y = pos.rot;
     scene.add(house);
   });
 }
 
-function createTeaStall() {
-  const stall = new THREE.Group();
-
-  const counter = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 1.6, 3),
-    new THREE.MeshStandardMaterial({ color: 0x8a5932, roughness: 0.9 })
-  );
-  counter.position.y = 0.8;
-  counter.castShadow = true;
-  stall.add(counter);
-
-  const awning = new THREE.Mesh(
-    new THREE.BoxGeometry(6.8, 0.25, 3.6),
-    new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.9 })
-  );
-  awning.position.set(0, 2.4, 0);
-  stall.add(awning);
-
-  const table = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.7, 0.7, 0.7, 16),
-    new THREE.MeshStandardMaterial({ color: 0x6d4a2d, roughness: 0.9 })
-  );
-  table.position.set(-1.3, 0.35, 1.8);
-  stall.add(table);
-
-  const kettle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.5, 0.5, 0.8, 16),
-    new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.7, roughness: 0.3 })
-  );
-  kettle.position.set(1.3, 1.1, 1.3);
-  stall.add(kettle);
-
-  const sign = new THREE.Mesh(
-    new THREE.BoxGeometry(3.2, 1.1, 0.2),
-    new THREE.MeshStandardMaterial({ color: 0xf7d978, roughness: 0.8 })
-  );
-  sign.position.set(0, 3.2, 1.8);
-  stall.add(sign);
-
-  stall.position.set(-18, 0, 10);
-  scene.add(stall);
-}
-
 function createTrees() {
-  const positions = [
-    [-30, 10], [-18, -22], [24, -18], [30, 8], [-6, 34], [15, 27], [-28, 27], [36, 17], [0, -18], [42, -25],
-    [-38, -8], [-12, -32], [10, 38], [38, -4], [-40, 22], [22, 30]
-  ];
-
-  positions.forEach(([x, z], index) => {
+  for (let i = 0; i < 18; i++) {
     const tree = new THREE.Group();
 
     const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.55, 0.8, 4.2 + (index % 3), 10),
-      new THREE.MeshStandardMaterial({ color: 0x6f4e2a, roughness: 0.9 })
+      new THREE.CylinderGeometry(0.45, 0.6, 3.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x6d4d2c })
     );
-    trunk.position.y = 2.1;
-    trunk.castShadow = true;
+    trunk.position.y = 1.6;
     tree.add(trunk);
 
-    for (let i = 0; i < 3; i++) {
-      const leaf = new THREE.Mesh(
-        new THREE.SphereGeometry(1.8 + i * 0.6, 16, 16),
-        new THREE.MeshStandardMaterial({
-          color: i === 0 ? 0x2e8b4d : i === 1 ? 0x3caf58 : 0x48c76c,
-          roughness: 0.95
-        })
-      );
-      leaf.position.set((i - 1) * 1.2, 4.6 + i * 0.8, (i % 2 === 0 ? 0.8 : -0.6));
-      leaf.castShadow = true;
-      tree.add(leaf);
-    }
+    const leaves = new THREE.Mesh(
+      new THREE.SphereGeometry(2.2, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0x2f9d46 })
+    );
+    leaves.position.y = 4.4;
+    tree.add(leaves);
 
+    const angle = (i / 18) * Math.PI * 2;
+    const radius = 42 + Math.random() * 30;
+    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 20;
+    const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 20;
     tree.position.set(x, 0, z);
     scene.add(tree);
-  });
-}
-
-function createLanterns() {
-  const lanternPositions = [
-    [-15, 0, -6], [15, 0, -6], [0, 0, -26], [-25, 0, 12], [25, 0, 18], [0, 0, 28]
-  ];
-
-  lanternPositions.forEach(([x, y, z]) => {
-    const lantern = new THREE.Group();
-    const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.08, 2.5, 8),
-      new THREE.MeshStandardMaterial({ color: 0x8a8a8a, metalness: 0.8, roughness: 0.3 })
-    );
-    pole.position.y = 1.25;
-    lantern.add(pole);
-
-    const bulb = new THREE.Mesh(
-      new THREE.SphereGeometry(0.22, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffde88, emissive: 0xffb700, emissiveIntensity: 1.8 })
-    );
-    bulb.position.y = 2.4;
-    lantern.add(bulb);
-
-    lantern.position.set(x, y, z);
-    scene.add(lantern);
-  });
-}
-
-function createFence() {
-  const fence = new THREE.Group();
-  for (let i = 0; i < 14; i++) {
-    const post = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 1.5, 0.42),
-      new THREE.MeshStandardMaterial({ color: 0x817d6e, roughness: 1 })
-    );
-    post.position.set(-26 + i * 3.8, 0.75, 25);
-    fence.add(post);
   }
-
-  for (let i = 0; i < 13; i++) {
-    const bar = new THREE.Mesh(
-      new THREE.BoxGeometry(2.7, 0.15, 0.15),
-      new THREE.MeshStandardMaterial({ color: 0x707060, roughness: 1 })
-    );
-    bar.position.set(-25 + i * 3.8, 1.3, 25);
-    fence.add(bar);
-  }
-
-  scene.add(fence);
-}
-
-function createMonument() {
-  const monument = new THREE.Group();
-  const stone = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.3, 1.8, 4.2, 10),
-    new THREE.MeshStandardMaterial({ color: 0x8a8a8a, roughness: 1 })
-  );
-  stone.position.y = 2.1;
-  stone.castShadow = true;
-  monument.add(stone);
-
-  const cap = new THREE.Mesh(
-    new THREE.BoxGeometry(2.7, 0.8, 2.7),
-    new THREE.MeshStandardMaterial({ color: 0xd7b26c, roughness: 0.7 })
-  );
-  cap.position.y = 4.6;
-  monument.add(cap);
-
-  monument.position.set(-11, 0, -30);
-  scene.add(monument);
-}
-
-function createStonePillars() {
-  const pillars = new THREE.Group();
-  for (let i = 0; i < 8; i++) {
-    const pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.35, 0.5, 3.2, 8),
-      new THREE.MeshStandardMaterial({ color: 0x8f8f8f, roughness: 1 })
-    );
-    pillar.position.set(-30 + i * 8.5, 1.6, -34);
-    pillar.castShadow = true;
-    pillars.add(pillar);
-  }
-  scene.add(pillars);
-}
-
-function createNPCs() {
-  const pandit = createHumanoid(0xd72638);
-  pandit.position.set(0, 0, -12);
-  pandit.userData = {
-    name: 'पुजारी (Main Quest)',
-    type: 'main_quest',
-    dialogue: 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल भयो! अब गाउँको जीवन, चिया र संस्कृति पत्ता लगाउनुहोस्।'
-  };
-  scene.add(pandit);
-  npcs.push(pandit);
-
-  const teaOwner = createHumanoid(0x3d6ecf);
-  teaOwner.position.set(-18, 0, 8);
-  teaOwner.userData = {
-    name: 'दाइ (चिया पसल - Side Quest)',
-    type: 'side_quest',
-    dialogue: 'नमस्ते बाबु! चिया खानुहुन्छ? हामरो गाउँको खास चिया, ताजा र मनमोहक छ!'
-  };
-  scene.add(teaOwner);
-  npcs.push(teaOwner);
-
-  const farmer = createHumanoid(0x7c9d2a);
-  farmer.position.set(18, 0, 20);
-  farmer.userData = {
-    name: 'किसान',
-    type: 'farmer',
-    dialogue: 'यो गाउँको खेत, पहाड़, र नदीले नै हाम्रो जीवनलाई सजिले चलाउँछ।'
-  };
-  scene.add(farmer);
-  npcs.push(farmer);
 }
 
 function createHumanoid(color) {
   const group = new THREE.Group();
 
-  const torso = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.42, 0.5, 1.6, 12),
-    new THREE.MeshStandardMaterial({ color: color, roughness: 0.9 })
-  );
-  torso.position.y = 1.2;
-  torso.castShadow = true;
-  group.add(torso);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0d0a8 });
 
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.34, 18, 18),
-    new THREE.MeshStandardMaterial({ color: 0xffdfb5 })
-  );
-  head.position.y = 2.3;
-  head.castShadow = true;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.6), bodyMat);
+  body.position.y = 1.15;
+  group.add(body);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 18), skinMat);
+  head.position.y = 2.1;
   group.add(head);
 
-  const hat = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.32, 0.38, 0.26, 12),
-    new THREE.MeshStandardMaterial({ color: 0x7a1f1f, roughness: 0.8 })
+  const topi = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.38, 0.38, 0.22),
+    new THREE.MeshStandardMaterial({ color: 0x5d0a0a })
   );
-  hat.position.y = 2.6;
-  group.add(hat);
-
-  const leftArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.11, 0.13, 1.2, 8),
-    new THREE.MeshStandardMaterial({ color: 0xffdfb5 })
-  );
-  leftArm.position.set(-0.55, 1.2, 0);
-  leftArm.rotation.z = Math.PI / 9;
-  group.add(leftArm);
-
-  const rightArm = leftArm.clone();
-  rightArm.position.x = 0.55;
-  rightArm.rotation.z = -Math.PI / 9;
-  group.add(rightArm);
-
-  const leftLeg = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12, 0.15, 1.1, 8),
-    new THREE.MeshStandardMaterial({ color: 0x3a3a3a })
-  );
-  leftLeg.position.set(-0.2, 0.15, 0);
-  group.add(leftLeg);
-
-  const rightLeg = leftLeg.clone();
-  rightLeg.position.x = 0.2;
-  group.add(rightLeg);
-
-  const sash = new THREE.Mesh(
-    new THREE.BoxGeometry(0.6, 0.15, 0.15),
-    new THREE.MeshStandardMaterial({ color: 0xf0d162 })
-  );
-  sash.position.y = 0.9;
-  group.add(sash);
-
-  const backpack = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.8, 0.35),
-    new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.85 })
-  );
-  backpack.position.set(0, 1.6, -0.45);
-  group.add(backpack);
+  topi.position.y = 2.45;
+  group.add(topi);
 
   return group;
 }
 
+function createNPCs() {
+  const pandit = createHumanoid(0xff3b30);
+  pandit.position.set(0, 0, -11);
+  pandit.userData = {
+    name: "पुजारी (Main Quest)",
+    type: "main_quest",
+    dialogue: "नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल भयो!"
+  };
+  scene.add(pandit);
+  npcs.push(pandit);
+
+  const teaOwner = createHumanoid(0x1e88e5);
+  teaOwner.position.set(-18, 0, 8);
+  teaOwner.userData = {
+    name: "दाइ (चिया पसल - Side Quest)",
+    type: "side_quest",
+    dialogue: "नमस्ते बाबु! चिया खानुहुन्छ? गाउँमा स्वागत छ!"
+  };
+  scene.add(teaOwner);
+  npcs.push(teaOwner);
+}
+
 function createPlayer() {
-  player = createHumanoid(0x2ca25d);
+  player = createHumanoid(0x2bb673);
   player.position.set(0, 0, 15);
   scene.add(player);
 }
@@ -663,43 +310,50 @@ function setupControls() {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLeft = false;
     if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRight = false;
   });
+
+  window.addEventListener('mousemove', (e) => {
+    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+    mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    cameraYaw -= e.movementX * 0.0025;
+    cameraPitch = THREE.MathUtils.clamp(cameraPitch - e.movementY * 0.0018, -0.9, 1.2);
+  });
 }
 
 function checkInteractions() {
-  if (!player) return;
-
   npcs.forEach((npc) => {
-    if (player.position.distanceTo(npc.position) < 4.2) {
-      document.getElementById('dialogue-title').innerText = npc.userData.name;
-      document.getElementById('dialogue-text').innerText = npc.userData.dialogue;
+    if (player.position.distanceTo(npc.position) < 4) {
+      const title = document.getElementById('dialogue-title');
+      const text = document.getElementById('dialogue-text');
+      title.innerText = npc.userData.name;
+      text.innerText = npc.userData.dialogue;
       document.getElementById('dialogue-modal').style.display = 'block';
 
       if (npc.userData.type === 'main_quest' && gameState.mainQuestStep === 0) {
         gameState.mainQuestStep = 1;
-        document.getElementById('q-title').innerText = 'Side Quest: चिया पसल';
-        document.getElementById('q-desc').innerText = 'गाउँको चिया पसलका दाइसँग भेट्नुहोस्।';
+        document.getElementById('q-title').innerText = "Side Quest: चिया पसल";
+        document.getElementById('q-desc').innerText = "गाउँको चिया पसलका दाइसँग भेट्नुहोस्।";
       }
     }
   });
 }
 
 window.closeDialogue = function() {
-  const modal = document.getElementById('dialogue-modal');
-  if (modal) modal.style.display = 'none';
+  document.getElementById('dialogue-modal').style.display = 'none';
 };
 
 function onWindowResize() {
   if (!camera || !renderer) return;
-
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
-  if (!scene || !camera || !renderer || !player) return;
+  requestAnimationFrame(animate);
 
-  const elapsed = clock.getElapsedTime();
+  if (!player || !camera || !renderer) return;
+
   const speed = 0.16;
 
   if (moveForward) player.position.z -= speed;
@@ -707,34 +361,15 @@ function animate() {
   if (moveLeft) player.position.x -= speed;
   if (moveRight) player.position.x += speed;
 
-  player.position.x = Math.max(-46, Math.min(46, player.position.x));
-  player.position.z = Math.max(-46, Math.min(46, player.position.z));
+  const desiredX = player.position.x + Math.sin(cameraYaw) * cameraDistance;
+  const desiredY = player.position.y + Math.sin(cameraPitch) * cameraDistance * 0.9 + 5.5;
+  const desiredZ = player.position.z + Math.cos(cameraYaw) * cameraDistance;
 
-  clouds.forEach((cloud, index) => {
-    cloud.position.x += Math.sin(elapsed * 0.15 + index) * 0.02 + cloud.userData.speed * 0.025;
-    cloud.position.z += Math.cos(elapsed * 0.2 + index) * 0.015;
-    if (cloud.position.x > 80) cloud.position.x = -80;
-    if (cloud.position.x < -80) cloud.position.x = 80;
-  });
+  camera.position.x += (desiredX - camera.position.x) * 0.12;
+  camera.position.y += (desiredY - camera.position.y) * 0.12;
+  camera.position.z += (desiredZ - camera.position.z) * 0.12;
 
-  const skyPhase = (Math.sin(elapsed * 0.12) + 1) / 2;
-  const dayColor = new THREE.Color().setHSL(0.61, 0.82, 0.56 + skyPhase * 0.18);
-  scene.background.copy(dayColor);
-  scene.fog.color.copy(dayColor.clone().offsetHSL(0, 0, -0.15));
-
-  const sunValue = 0.8 + skyPhase * 0.8;
-  sunLight.intensity = 0.35 + sunValue * 1.1;
-  moonLight.intensity = 1.0 - sunValue * 0.75;
-
-  if (worldWater) {
-    worldWater.material.emissiveIntensity = 0.12 + skyPhase * 0.25;
-    worldWater.position.y = 0.55 + Math.sin(elapsed * 1.5) * 0.04;
-  }
-
-  camera.position.x = player.position.x;
-  camera.position.z = player.position.z + 12;
-  camera.position.y = player.position.y + 5.8;
-  camera.lookAt(player.position.x, player.position.y + 1.3, player.position.z);
+  camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
 
   renderer.render(scene, camera);
 }
