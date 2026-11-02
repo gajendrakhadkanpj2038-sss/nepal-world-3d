@@ -5,6 +5,7 @@ let scene, camera, renderer, player, clock;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 let sunLight, moonLight;
 let clouds = [];
+let worldWater = null;
 
 const gameState = {
   mainQuestStep: 0,
@@ -18,6 +19,13 @@ window.initGame = function() {
   const canvas = document.getElementById('game');
   if (!canvas) return;
 
+  if (!window.THREE) {
+    console.error('Three.js failed to load. Check the CDN or browser network connection.');
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.classList.remove('hidden');
+    return;
+  }
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9ad8ff);
   scene.fog = new THREE.Fog(0xbfe7ff, 28, 220);
@@ -25,9 +33,10 @@ window.initGame = function() {
   camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
   camera.position.set(0, 7, 18);
 
-  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x9ad8ff, 1);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
@@ -67,7 +76,7 @@ window.initGame = function() {
 
   setupControls();
   window.addEventListener('resize', onWindowResize);
-  animate();
+  renderer.setAnimationLoop(animate);
 };
 
 function createSkyClouds() {
@@ -88,15 +97,8 @@ function createSkyClouds() {
       puff.position.set((j - puffCount / 2) * 2.2, Math.random() * 1.4, Math.random() * 2);
       cloud.add(puff);
     }
-    cloud.position.set(
-      -80 + Math.random() * 160,
-      40 + Math.random() * 36,
-      -90 - Math.random() * 70
-    );
-    cloud.userData = {
-      speed: 0.5 + Math.random() * 0.7,
-      drift: Math.random() * Math.PI * 2
-    };
+    cloud.position.set(-80 + Math.random() * 160, 40 + Math.random() * 36, -90 - Math.random() * 70);
+    cloud.userData = { speed: 0.5 + Math.random() * 0.7, drift: Math.random() * Math.PI * 2 };
     scene.add(cloud);
     clouds.push(cloud);
   }
@@ -145,7 +147,7 @@ function createTerrain() {
   river.rotation.x = -Math.PI / 2;
   river.position.set(0, 0.55, 36);
   river.receiveShadow = true;
-  river.userData = { speed: 0.18 };
+  worldWater = river;
   scene.add(river);
   worldProps.push(river);
 
@@ -326,7 +328,7 @@ function createHouses() {
     { x: 18, z: -20, rot: Math.PI / 8 }
   ];
 
-  positions.forEach((pos, idx) => {
+  positions.forEach((pos) => {
     const house = new THREE.Group();
 
     const wall = new THREE.Mesh(
@@ -497,7 +499,6 @@ function createFence() {
     bar.position.set(-25 + i * 3.8, 1.3, 25);
     fence.add(bar);
   }
-  fence.position.y = 0;
   scene.add(fence);
 }
 
@@ -659,7 +660,8 @@ function setupControls() {
 }
 
 function checkInteractions() {
-  npcs.forEach(npc => {
+  if (!player) return;
+  npcs.forEach((npc) => {
     if (player.position.distanceTo(npc.position) < 4.2) {
       document.getElementById('dialogue-title').innerText = npc.userData.name;
       document.getElementById('dialogue-text').innerText = npc.userData.dialogue;
@@ -679,13 +681,14 @@ window.closeDialogue = function() {
 };
 
 function onWindowResize() {
+  if (!camera || !renderer) return;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
-  requestAnimationFrame(animate);
+  if (!scene || !camera || !renderer || !player) return;
 
   const elapsed = clock.getElapsedTime();
   const speed = 0.16;
@@ -714,10 +717,9 @@ function animate() {
   sunLight.intensity = 0.35 + sunValue * 1.1;
   moonLight.intensity = 1.0 - sunValue * 0.75;
 
-  const water = scene.children.find(child => child.userData && child.userData.speed !== undefined && child.geometry && child.geometry.type === 'PlaneGeometry');
-  if (water) {
-    water.material.emissiveIntensity = 0.12 + skyPhase * 0.25;
-    water.position.y = 0.55 + Math.sin(elapsed * 1.5) * 0.04;
+  if (worldWater) {
+    worldWater.material.emissiveIntensity = 0.12 + skyPhase * 0.25;
+    worldWater.position.y = 0.55 + Math.sin(elapsed * 1.5) * 0.04;
   }
 
   camera.position.x = player.position.x;
@@ -727,4 +729,3 @@ function animate() {
 
   renderer.render(scene, camera);
 }
-
