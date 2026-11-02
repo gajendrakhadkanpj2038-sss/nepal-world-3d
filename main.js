@@ -12,8 +12,6 @@ let cameraPitch = 0.52;
 let cameraDistance = 12.5;
 let isGameStarted = false;
 let clock;
-let miniMapCtx = null;
-let questMenuOpen = false;
 
 function createCanvasTexture(drawFn, size = 256) {
   const canvas = document.createElement('canvas');
@@ -201,116 +199,19 @@ function createClothTexture() {
   }, 256);
 }
 
-function initMiniMap() {
-  const canvas = document.getElementById('mini-map');
-  if (!canvas) return;
-  miniMapCtx = canvas.getContext('2d');
-  drawMiniMap();
-}
-
-function drawMiniMap() {
-  if (!miniMapCtx) return;
-  const canvas = document.getElementById('mini-map');
+function togglePointerLock() {
+  const canvas = document.getElementById('game');
   if (!canvas) return;
 
-  const ctx = miniMapCtx;
-  const w = canvas.width;
-  const h = canvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
-
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#132e1d';
-  ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 72, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.fillStyle = '#a7d08f';
-  ctx.fillRect(28, 20, 124, 118);
-
-  if (player) {
-    const px = cx + player.position.x * 0.9;
-    const py = cy + player.position.z * 0.9;
-    ctx.fillStyle = '#ffd54a';
-    ctx.beginPath();
-    ctx.arc(px, py, 5, 0, Math.PI * 2);
-    ctx.fill();
+  if (document.pointerLockElement === canvas) {
+    document.exitPointerLock();
+    document.body.style.cursor = 'auto';
+    canvas.style.cursor = 'auto';
+  } else {
+    canvas.requestPointerLock?.();
+    document.body.style.cursor = 'none';
+    canvas.style.cursor = 'none';
   }
-
-  npcs.forEach((npc) => {
-    const x = cx + npc.position.x * 0.9;
-    const y = cy + npc.position.z * 0.9;
-    ctx.fillStyle = '#7fd3ff';
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fill();
-  });
-}
-
-function openQuestMenu() {
-  const menu = document.getElementById('quest-menu');
-  if (!menu) return;
-  menu.classList.add('open');
-  document.body.classList.add('quest-menu-open');
-  questMenuOpen = true;
-  document.body.style.cursor = 'auto';
-  document.getElementById('game').style.cursor = 'auto';
-  renderQuestList();
-}
-
-function closeQuestMenu() {
-  const menu = document.getElementById('quest-menu');
-  if (!menu) return;
-  menu.classList.remove('open');
-  document.body.classList.remove('quest-menu-open');
-  questMenuOpen = false;
-  document.body.style.cursor = 'none';
-  document.getElementById('game').style.cursor = 'none';
-}
-
-function renderQuestList() {
-  const list = document.getElementById('quest-list');
-  const status = document.getElementById('quest-summary');
-  if (!list || !status) return;
-
-  const quests = [
-    { id: 'main', name: 'Temple Blessing', desc: 'Meet the priest at Bageshwori temple and receive the blessing.', state: 'accepted' },
-    { id: 'tea', name: 'Tea Stall Request', desc: 'Visit the tea seller and collect the local tea blessing from the village.', state: 'pending' },
-    { id: 'market', name: 'Village Errand', desc: 'Help the villagers by bringing supplies to the center market.', state: 'pending' },
-    { id: 'path', name: 'Forest Path', desc: 'Visit the forest path and gather herbs for the shrine workers.', state: 'pending' }
-  ];
-
-  const acceptedCount = 1;
-  status.textContent = `${acceptedCount} accepted / ${quests.length - acceptedCount} remaining`;
-
-  list.innerHTML = quests.map((quest) => {
-    const active = quest.id === 'main' ? 'active' : '';
-    const stateClass = quest.state === 'accepted' ? 'accepted' : quest.state === 'completed' ? 'completed' : 'pending';
-    return `
-      <button class="quest-item ${active}" data-quest-id="${quest.id}">
-        <div class="quest-item-head">
-          <span class="quest-name">${quest.name}</span>
-          <span class="quest-state ${stateClass}">${quest.state}</span>
-        </div>
-        <div class="quest-desc">${quest.desc}</div>
-      </button>
-    `;
-  }).join('');
-
-  list.querySelectorAll('.quest-item').forEach((item) => {
-    item.addEventListener('click', () => {
-      const questId = item.getAttribute('data-quest-id');
-      const targetNpc = questId === 'tea' ? npcs.find((n) => n.userData.npcType === 'side_quest') : npcs.find((n) => n.userData.npcType === 'main_quest');
-      if (targetNpc) {
-        gameState.currentTarget = targetNpc.position.clone();
-      }
-      document.querySelectorAll('.quest-item').forEach((q) => q.classList.remove('active'));
-      item.classList.add('active');
-    });
-  });
 }
 
 window.initGame = function() {
@@ -326,7 +227,6 @@ window.initGame = function() {
 
     if (!window.THREE) {
       console.error('Three.js not loaded');
-      alert('Three.js failed to load. Please refresh the page.');
       return;
     }
 
@@ -340,12 +240,10 @@ window.initGame = function() {
     renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance'
+      alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x88c9f6, 1);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -374,17 +272,15 @@ window.initGame = function() {
     createClouds();
     createNPCs();
     createPlayer();
-    initMiniMap();
+
     setupControls();
     window.addEventListener('resize', onWindowResize);
 
-    updateQuestUI('मुख्य मिसन (Main Quest)', 'बागेश्वरी मन्दिरमा पुजारीसँग भेट्नुहोस् र आशीर्वाद लिनुहोस्।');
-    renderQuestList();
+    updateQuestUI('मुख्य मिसन (Main Quest)', 'बागेश्वरी मन्दिरमा मुख्य पुजारीसँग भेट्नुहोस् र आशीर्वाद लिनुहोस्।');
     animate();
     console.log('Game initialized successfully');
   } catch (error) {
     console.error('Game initialization failed:', error);
-    alert('Game failed to start. Check the browser console for details.');
   }
 };
 
@@ -731,11 +627,11 @@ function createPlayer() {
 
 function setupControls() {
   document.addEventListener('keydown', (e) => {
-    if (e.code === 'Tab') {
-      if (questMenuOpen) closeQuestMenu();
-      else openQuestMenu();
+    if (e.code === 'KeyQ') {
+      togglePointerLock();
       return;
     }
+
     if (e.code === 'KeyW' || e.code === 'ArrowUp') moveForward = true;
     if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = true;
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLeft = true;
@@ -751,17 +647,15 @@ function setupControls() {
   });
 
   const canvas = document.getElementById('game');
-  const closeButton = document.getElementById('close-quest-menu');
-  if (closeButton) closeButton.addEventListener('click', closeQuestMenu);
 
   document.addEventListener('click', () => {
-    if (!questMenuOpen && canvas && document.pointerLockElement !== canvas) {
+    if (canvas && document.pointerLockElement !== canvas) {
       canvas.requestPointerLock?.();
     }
   });
 
   document.addEventListener('mousemove', (event) => {
-    if (document.pointerLockElement !== canvas || questMenuOpen) return;
+    if (document.pointerLockElement !== canvas) return;
     cameraYaw -= event.movementX * 0.0025;
     cameraPitch = THREE.MathUtils.clamp(
       cameraPitch - event.movementY * 0.0018,
@@ -834,7 +728,6 @@ function updateQuestUI(title, description) {
 }
 
 function checkInteractions() {
-  if (!player || npcs.length === 0) return;
   const nearNpc = npcs.find((npc) => player.position.distanceTo(npc.position) < 4);
   if (!nearNpc) {
     closeDialogue();
@@ -880,9 +773,9 @@ function onWindowResize() {
 function animate() {
   requestAnimationFrame(animate);
 
-  if (!player || !camera || !renderer || !scene) return;
+  if (!player || !camera || !renderer) return;
 
-  const dt = clock ? clock.getDelta() : 0.016;
+  const dt = clock.getDelta();
   const moveVector = getMovementVector();
   const movementMagnitude = Math.hypot(moveVector.x, moveVector.z);
 
@@ -916,6 +809,5 @@ function animate() {
 
   camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
 
-  if (miniMapCtx) drawMiniMap();
   renderer.render(scene, camera);
 }
