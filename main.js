@@ -1,961 +1,719 @@
-let scene, camera, renderer, player;
-let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-
-const npcs = [];
-const gameState = {
-  mainQuestStep: 0,
-  sideQuests: { teaStall: false }
-};
-
-let cameraYaw = 0;
-let cameraPitch = 0.52;
-let cameraDistance = 12.5;
-let isGameStarted = false;
-let clock;
-let miniMapCtx = null;
-let questMenuOpen = false;
-
-function createCanvasTexture(drawFn, size = 256) {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  drawFn(ctx, size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 8;
-  return texture;
-}
-
-function createGrassTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#5aa74e';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 3500; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const shade = 70 + Math.random() * 80;
-      ctx.fillStyle = `rgba(${shade}, ${shade + 28}, ${shade - 18}, 0.72)`;
-      ctx.fillRect(x, y, 2, 2);
+<!doctype html>
+<html lang="ne">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NEPAL WORLD 3D</title>
+  <style>
+    :root {
+      --bg-deep: #050d0a;
+      --panel: rgba(10, 18, 17, 0.78);
+      --panel-strong: rgba(17, 24, 22, 0.92);
+      --gold: #ffc107;
+      --gold-2: #ffdb6a;
+      --red: #ff4d5c;
+      --green: #2ce08b;
+      --sky-top: #8ecbff;
+      --sky-mid: #dbefff;
+      --sky-low: #7bc0ff;
+      --text: #f3f7f5;
+      --muted: #dfe5e2;
+      --line: rgba(255,255,255,0.12);
     }
 
-    for (let i = 0; i < 900; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      ctx.strokeStyle = 'rgba(12, 78, 20, 0.28)';
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + 4 + Math.random() * 8, y + 5 + Math.random() * 8);
-      ctx.stroke();
-    }
-  }, 256);
-}
-
-function createMountainTexture() {
-  return createCanvasTexture((ctx, size) => {
-    const gradient = ctx.createLinearGradient(0, 0, 0, size);
-    gradient.addColorStop(0, '#f4f9ff');
-    gradient.addColorStop(0.55, '#dfeaf7');
-    gradient.addColorStop(1, '#becfd9');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 1800; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const r = 2 + Math.random() * 9;
-      ctx.fillStyle = `rgba(255,255,255,${0.08 + Math.random() * 0.22})`;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, 256);
-}
-
-function createRockTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#8d8d8d';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 7000; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const w = 2 + Math.random() * 6;
-      const h = 2 + Math.random() * 6;
-      ctx.fillStyle = `rgba(${120 + Math.random() * 50}, ${120 + Math.random() * 50}, ${120 + Math.random() * 50}, 0.65)`;
-      ctx.fillRect(x, y, w, h);
-    }
-  }, 256);
-}
-
-function createTempleWallTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#b71d1d';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 4500; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const s = 1 + Math.random() * 3;
-      ctx.fillStyle = `rgba(${100 + Math.random() * 30}, 0, 0, 0.45)`;
-      ctx.fillRect(x, y, s, s);
-    }
-  }, 256);
-}
-
-function createRoofTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#1e1e1e';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < size; i += 16) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, size);
-      ctx.stroke();
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    for (let j = 0; j < size; j += 16) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-      ctx.beginPath();
-      ctx.moveTo(0, j);
-      ctx.lineTo(size, j);
-      ctx.stroke();
-    }
-  }, 256);
-}
-
-function createWoodTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#8d5a2d';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < size; i += 8) {
-      ctx.strokeStyle = 'rgba(60, 28, 10, 0.72)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, size);
-      ctx.stroke();
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top, rgba(60, 112, 94, 0.38), transparent 26%),
+        linear-gradient(180deg, #061712 0%, #050d0a 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      cursor: none;
+      touch-action: none;
     }
 
-    for (let y = 0; y < size; y += 18) {
-      ctx.strokeStyle = 'rgba(255, 210, 160, 0.22)';
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(size, y);
-      ctx.stroke();
-    }
-  }, 256);
-}
-
-function createLeafTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#2e9d47';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 1300; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const r = 2 + Math.random() * 5;
-      ctx.fillStyle = `rgba(${65 + Math.random() * 60}, ${120 + Math.random() * 70}, ${45 + Math.random() * 60}, 0.72)`;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, 256);
-}
-
-function createSkinTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#f0d0a8';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 1000; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const s = 1 + Math.random() * 3;
-      ctx.fillStyle = `rgba(170, 120, 90, ${0.06 + Math.random() * 0.16})`;
-      ctx.fillRect(x, y, s, s);
-    }
-  }, 256);
-}
-
-function createNepaliDressTexture(primaryColor, accentColor = '#f5d88b') {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = primaryColor;
-    ctx.fillRect(0, 0, size, size);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.72)';
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.moveTo(18, 0);
-    ctx.lineTo(18, size);
-    ctx.moveTo(size - 18, 0);
-    ctx.lineTo(size - 18, size);
-    ctx.stroke();
-
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(0, size * 0.18);
-    ctx.lineTo(size, size * 0.18);
-    ctx.moveTo(0, size * 0.82);
-    ctx.lineTo(size, size * 0.82);
-    ctx.moveTo(0, size * 0.5);
-    ctx.lineTo(size, size * 0.5);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    for (let x = 10; x < size; x += 26) {
-      ctx.fillRect(x, 18, 4, size - 36);
-    }
-  }, 256);
-}
-
-function createClothTexture() {
-  return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#dddddd';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let x = 0; x < size; x += 22) {
-      ctx.fillStyle = 'rgba(0,0,0,0.08)';
-      ctx.fillRect(x, 0, 2, size);
+    body.quest-menu-open {
+      cursor: auto;
     }
 
-    for (let y = 0; y < size; y += 20) {
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(0, y, size, 2);
+    #game {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+      cursor: none;
+      background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 40%, var(--sky-low) 100%);
+      filter: contrast(1.08) saturate(1.2) brightness(1.02);
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.12);
     }
-  }, 256);
-}
 
-function initMiniMap() {
-  const canvas = document.getElementById('mini-map');
-  if (!canvas) return;
-  miniMapCtx = canvas.getContext('2d');
-}
+    #scene-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background:
+        radial-gradient(circle at 50% 30%, rgba(255,255,255,0.58), transparent 18%),
+        radial-gradient(circle at center, transparent 0%, rgba(10, 22, 18, 0.07) 50%, rgba(0, 0, 0, 0.34) 100%);
+    }
 
-function drawMiniMap() {
-  if (!miniMapCtx) return;
-  const canvas = document.getElementById('mini-map');
-  if (!canvas) return;
+    #scanlines {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.06),
+        rgba(255,255,255,0.06) 1px,
+        transparent 2px,
+        transparent 4px
+      );
+      mix-blend-mode: soft-light;
+      opacity: 0.7;
+    }
 
-  const ctx = miniMapCtx;
-  const w = canvas.width;
-  const h = canvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
+    #vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      background: radial-gradient(circle at center, transparent 58%, rgba(0, 0, 0, 0.44) 100%);
+    }
 
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#132e1d';
-  ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 72, 0, Math.PI * 2);
-  ctx.stroke();
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at center, rgba(20, 64, 51, 0.95) 0%, rgba(5, 12, 10, 0.98) 46%, rgba(3, 7, 6, 1) 100%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      transition: opacity 0.85s ease, visibility 0.85s ease;
+      overflow: hidden;
+      isolation: isolate;
+    }
 
-  ctx.fillStyle = '#a7d08f';
-  ctx.fillRect(28, 20, 124, 118);
+    #splash-screen::before,
+    #splash-screen::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
 
-  if (player) {
-    const px = cx + player.position.x * 0.9;
-    const py = cy + player.position.z * 0.9;
-    ctx.fillStyle = '#ffd54a';
-    ctx.beginPath();
-    ctx.arc(px, py, 5, 0, Math.PI * 2);
-    ctx.fill();
-  }
+    #splash-screen::before {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(255, 193, 7, 0.18), transparent 18%),
+        radial-gradient(circle at 80% 20%, rgba(40, 167, 69, 0.15), transparent 17%),
+        radial-gradient(circle at 50% 82%, rgba(255, 77, 92, 0.12), transparent 24%);
+    }
 
-  npcs.forEach((npc) => {
-    const x = cx + npc.position.x * 0.9;
-    const y = cy + npc.position.z * 0.9;
-    ctx.fillStyle = '#7fd3ff';
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fill();
-  });
-}
+    #splash-screen::after {
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.12) 45%, transparent 100%);
+      transform: translateX(-110%);
+      animation: shimmer 5.2s ease-in-out infinite;
+    }
 
-function openQuestMenu() {
-  const menu = document.getElementById('quest-menu');
-  if (!menu) return;
-  menu.classList.add('open');
-  document.body.classList.add('quest-menu-open');
-  questMenuOpen = true;
-  document.body.style.cursor = 'auto';
-  document.getElementById('game').style.cursor = 'auto';
-  renderQuestList();
-}
+    @keyframes shimmer {
+      0% { transform: translateX(-110%); }
+      30% { transform: translateX(100%); }
+      100% { transform: translateX(100%); }
+    }
 
-function closeQuestMenu() {
-  const menu = document.getElementById('quest-menu');
-  if (!menu) return;
-  menu.classList.remove('open');
-  document.body.classList.remove('quest-menu-open');
-  questMenuOpen = false;
-  document.body.style.cursor = 'none';
-  document.getElementById('game').style.cursor = 'none';
-}
+    .splash-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 24px;
+      gap: 16px;
+      text-shadow: 0 12px 26px rgba(0,0,0,0.25);
+    }
 
-function renderQuestList() {
-  const list = document.getElementById('quest-list');
-  const status = document.getElementById('quest-summary');
-  if (!list || !status) return;
+    #splash-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
 
-  const quests = [
-    { id: 'main', name: 'Temple Blessing', desc: 'Meet the priest at Bageshwori temple and receive the blessing.', state: 'accepted' },
-    { id: 'tea', name: 'Tea Stall Request', desc: 'Visit the tea seller and collect the local tea blessing from the village.', state: 'pending' },
-    { id: 'market', name: 'Village Errand', desc: 'Help the villagers by bringing supplies to the center market.', state: 'pending' },
-    { id: 'path', name: 'Forest Path', desc: 'Visit the forest path and gather herbs for the shrine workers.', state: 'pending' }
-  ];
+    .gta-title {
+      font-size: clamp(2.7rem, 6vw, 5.7rem);
+      font-weight: 900;
+      letter-spacing: 5px;
+      color: #ff465a;
+      text-shadow: 0 0 26px rgba(255, 70, 90, 0.8), 4px 4px 0 rgba(0,0,0,0.8);
+      text-transform: uppercase;
+      line-height: 0.92;
+      position: relative;
+    }
 
-  const acceptedCount = 1;
-  status.textContent = `${acceptedCount} accepted / ${quests.length - acceptedCount} remaining`;
+    .gta-subtitle {
+      font-size: clamp(0.95rem, 2.4vw, 1.8rem);
+      font-weight: 800;
+      color: #f8f9fa;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      opacity: 0.96;
+    }
 
-  list.innerHTML = quests.map((quest) => {
-    const active = quest.id === 'main' ? 'active' : '';
-    const stateClass = quest.state === 'accepted' ? 'accepted' : quest.state === 'completed' ? 'completed' : 'pending';
-    return `
-      <button class="quest-item ${active}" data-quest-id="${quest.id}">
-        <div class="quest-item-head">
-          <span class="quest-name">${quest.name}</span>
-          <span class="quest-state ${stateClass}">${quest.state}</span>
-        </div>
-        <div class="quest-desc">${quest.desc}</div>
-      </button>
-    `;
-  }).join('');
+    .credits-box {
+      border-top: 2px solid var(--red);
+      border-bottom: 2px solid var(--red);
+      padding: 16px 30px;
+      background: rgba(0, 0, 0, 0.38);
+      margin: 8px 0 18px;
+      box-shadow: inset 0 0 18px rgba(255, 77, 92, 0.1);
+      backdrop-filter: blur(4px);
+    }
 
-  list.querySelectorAll('.quest-item').forEach((item) => {
-    item.addEventListener('click', () => {
-      const questId = item.getAttribute('data-quest-id');
-      const targetNpc = questId === 'tea' ? npcs.find((n) => n.userData.npcType === 'side_quest') : npcs.find((n) => n.userData.npcType === 'main_quest');
-      if (targetNpc) {
-        gameState.currentTarget = targetNpc.position.clone();
+    .credits-text {
+      font-size: 1rem;
+      color: #dae0e5;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+
+    .author-name {
+      color: var(--gold);
+      font-size: clamp(1.08rem, 1.5vw, 1.5rem);
+      font-weight: 800;
+      margin-top: 5px;
+      letter-spacing: 0.06em;
+      text-shadow: 0 8px 24px rgba(255, 193, 7, 0.18);
+    }
+
+    .start-btn {
+      position: relative;
+      padding: 16px 44px;
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: #102a22;
+      background: linear-gradient(135deg, var(--gold) 0%, #ffd76d 46%, #fff4bf 100%);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(255, 193, 7, 0.45), 0 18px 30px rgba(0,0,0,0.28);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      overflow: hidden;
+    }
+
+    .start-btn::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.8) 45%, transparent 100%);
+      transform: translateX(-130%);
+      transition: transform 0.7s ease;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 0 34px rgba(255, 193, 7, 0.58), 0 22px 36px rgba(0,0,0,0.32);
+      filter: brightness(1.04);
+    }
+
+    .start-btn:hover::before {
+      transform: translateX(130%);
+    }
+
+    #hud {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+      gap: 15px;
+    }
+
+    .pill {
+      background: rgba(10, 25, 20, 0.72);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      backdrop-filter: blur(6px);
+      letter-spacing: 0.03em;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    .pill:last-child {
+      background: rgba(18, 32, 28, 0.72);
+    }
+
+    #quest-tracker {
+      position: fixed;
+      top: 76px;
+      left: 15px;
+      background: linear-gradient(135deg, rgba(14, 22, 18, 0.88), rgba(24, 36, 30, 0.82));
+      border-left: 4px solid var(--gold);
+      border-radius: 0 14px 14px 0;
+      padding: 12px 18px;
+      z-index: 10;
+      max-width: 360px;
+      pointer-events: none;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.22);
+      backdrop-filter: blur(8px);
+    }
+
+    #quest-tracker h4 {
+      color: var(--gold);
+      margin-bottom: 6px;
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    #quest-tracker p {
+      font-size: 13px;
+      color: #ddd;
+      line-height: 1.45;
+      opacity: 0.96;
+    }
+
+    #quest-menu {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(720px, calc(100vw - 30px));
+      padding: 18px 20px 20px;
+      background: rgba(9, 14, 13, 0.93);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      box-shadow: 0 22px 52px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.05);
+      display: none;
+      z-index: 30;
+      backdrop-filter: blur(10px);
+    }
+
+    #quest-menu.open { display: block; }
+
+    .quest-menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .quest-menu-title {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    .close-btn {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 0.2s ease;
+    }
+
+    .close-btn:hover { background: rgba(255,255,255,0.12); }
+
+    #quest-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      color: #d8e2d9;
+      margin-bottom: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    #quest-list {
+      display: grid;
+      gap: 10px;
+      max-height: 420px;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,193,7,0.55) transparent;
+    }
+
+    .quest-item {
+      width: 100%;
+      text-align: left;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      color: white;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .quest-item:hover {
+      background: rgba(255,255,255,0.05);
+      transform: translateY(-1px);
+    }
+
+    .quest-item.active {
+      border-color: rgba(255, 193, 7, 0.9);
+      background: rgba(255, 193, 7, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.28);
+    }
+
+    .quest-item-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .quest-name { font-size: 15px; font-weight: 800; }
+
+    .quest-state {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      color: #dfeaf4;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .quest-state.accepted { background: rgba(40,167,69,0.22); color: #7ee7a6; }
+    .quest-state.completed { background: rgba(255,193,7,0.2); color: #ffd76d; }
+    .quest-state.pending { background: rgba(220,53,69,0.18); color: #ff9ca6; }
+
+    .quest-desc {
+      font-size: 12px;
+      color: #dfe2e7;
+      line-height: 1.5;
+      opacity: 0.94;
+    }
+
+    #mini-map-container {
+      position: fixed;
+      right: 18px;
+      bottom: 22px;
+      width: 182px;
+      height: 182px;
+      background: rgba(9, 18, 15, 0.82);
+      border: 2px solid rgba(255,255,255,0.14);
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.52), inset 0 0 28px rgba(255,255,255,0.03);
+      z-index: 16;
+      pointer-events: none;
+    }
+
+    #mini-map {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: rgba(66, 112, 88, 0.26);
+    }
+
+    #dialogue-modal {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(90%, 600px);
+      background: linear-gradient(180deg, rgba(15, 23, 20, 0.97), rgba(10,18,16,0.94));
+      border: 2px solid rgba(40, 167, 69, 0.88);
+      padding: 20px;
+      border-radius: 16px;
+      display: none;
+      z-index: 20;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    #dialogue-title {
+      color: var(--gold);
+      font-size: 1.18rem;
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    #dialogue-text {
+      font-size: 1rem;
+      color: #eee;
+      margin-bottom: 15px;
+      line-height: 1.55;
+    }
+
+    .action-btn {
+      background: linear-gradient(135deg, #2bb673, #28a745);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(40,167,69,0.33);
+      transition: transform 0.2s ease;
+    }
+
+    .action-btn:hover { transform: translateY(-1px); }
+
+    #controls-hint {
+      position: fixed;
+      bottom: 15px;
+      right: 15px;
+      background: rgba(0,0,0,0.62);
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: #c8d0cf;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.06);
+      line-height: 1.5;
+      backdrop-filter: blur(4px);
+    }
+
+    #mobile-controls {
+      position: fixed;
+      left: 18px;
+      bottom: 22px;
+      z-index: 18;
+      display: none;
+      pointer-events: none;
+    }
+
+    .joystick {
+      position: relative;
+      width: 146px;
+      height: 146px;
+      border-radius: 50%;
+      background: rgba(13, 24, 19, 0.34);
+      border: 2px solid rgba(255,255,255,0.16);
+      box-shadow: inset 0 0 20px rgba(255,255,255,0.04), 0 16px 28px rgba(0,0,0,0.26);
+      backdrop-filter: blur(8px);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .joystick::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .joystick-knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52px;
+      height: 52px;
+      margin-left: -26px;
+      margin-top: -26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), rgba(255,193,7,0.82) 28%, rgba(255,173,0,0.94) 62%, rgba(255,129,0,0.78) 100%);
+      border: 2px solid rgba(255,255,255,0.5);
+      box-shadow: 0 12px 18px rgba(0,0,0,0.28);
+      transition: transform 0.04s linear;
+    }
+
+    @media (max-width: 900px) {
+      #controls-hint {
+        display: none;
       }
-      document.querySelectorAll('.quest-item').forEach((q) => q.classList.remove('active'));
-      item.classList.add('active');
-    });
-  });
-}
 
-function togglePointerLock() {
-  const canvas = document.getElementById('game');
-  if (!canvas) return;
+      #quest-tracker {
+        max-width: 280px;
+        top: 72px;
+      }
 
-  if (document.pointerLockElement === canvas) {
-    document.exitPointerLock();
-    document.body.style.cursor = 'auto';
-    canvas.style.cursor = 'auto';
-  } else {
-    canvas.requestPointerLock?.();
-    document.body.style.cursor = 'none';
-    canvas.style.cursor = 'none';
-  }
-}
-
-window.initGame = function() {
-  if (isGameStarted) return;
-  isGameStarted = true;
-
-  try {
-    const canvas = document.getElementById('game');
-    if (!canvas) {
-      console.error('Canvas not found');
-      return;
+      #mini-map-container {
+        width: 140px;
+        height: 140px;
+        bottom: 180px;
+      }
     }
 
-    if (!window.THREE) {
-      console.error('Three.js not loaded');
-      return;
+    @media (max-width: 720px) {
+      #quest-tracker {
+        max-width: 300px;
+        top: 68px;
+      }
+
+      #hud {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        gap: 8px;
+      }
+
+      .pill {
+        padding: 9px 12px;
+        font-size: 11px;
+      }
+
+      #mini-map-container {
+        width: 120px;
+        height: 120px;
+      }
     }
 
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x88c9f6);
-    scene.fog = new THREE.FogExp2(0xdfefff, 0.0038);
+    @media (max-width: 720px) and (orientation: portrait) {
+      #quest-tracker {
+        top: 82px;
+        left: 12px;
+        max-width: 230px;
+      }
 
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 6, 14);
+      #hud {
+        flex-direction: column;
+        align-items: flex-start;
+      }
 
-    renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
-      antialias: true,
-      alpha: false,
-      powerPreference: 'high-performance'
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x88c9f6, 1);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputEncoding = THREE.sRGBEncoding;
+      #mini-map-container {
+        right: 12px;
+        bottom: 174px;
+      }
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
-    scene.add(ambient);
+      #mobile-controls {
+        display: block;
+      }
 
-    const sun = new THREE.DirectionalLight(0xfff3d6, 1.45);
-    sun.position.set(90, 140, 40);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -120;
-    sun.shadow.camera.right = 120;
-    sun.shadow.camera.top = 120;
-    sun.shadow.camera.bottom = -120;
-    scene.add(sun);
-
-    clock = new THREE.Clock();
-
-    createGround();
-    createRoad();
-    createHimalayas();
-    createTemple();
-    createHouses();
-    createTrees();
-    createClouds();
-    createNPCs();
-    createPlayer();
-    initMiniMap();
-    setupControls();
-    window.addEventListener('resize', onWindowResize);
-
-    updateQuestUI('मुख्य मिसन (Main Quest)', 'बागेश्वरी मन्दिरमा पुजारीसँग भेट्नुहोस् र आशीर्वाद लिनुहोस्।');
-    renderQuestList();
-    animate();
-    console.log('Game initialized successfully');
-  } catch (error) {
-    console.error('Game initialization failed:', error);
-    alert('Game failed to start. Check the browser console for details.');
-  }
-};
-
-function createGround() {
-  const groundTexture = createGrassTexture();
-  groundTexture.repeat.set(30, 30);
-
-  const material = new THREE.MeshStandardMaterial({
-    map: groundTexture,
-    roughness: 0.95,
-    metalness: 0.02
-  });
-
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(350, 350, 64, 64), material);
-  plane.rotation.x = -Math.PI / 2;
-  plane.receiveShadow = true;
-  scene.add(plane);
-}
-
-function createRoad() {
-  const roadTexture = createWoodTexture();
-  roadTexture.repeat.set(18, 1);
-
-  const road = new THREE.Mesh(
-    new THREE.BoxGeometry(20, 0.18, 150),
-    new THREE.MeshStandardMaterial({
-      map: roadTexture,
-      roughness: 0.9
-    })
-  );
-  road.position.set(0, 0.12, 0);
-  road.receiveShadow = true;
-  scene.add(road);
-}
-
-function createHimalayas() {
-  const mountainTexture = createMountainTexture();
-
-  for (let i = 0; i < 12; i++) {
-    const h = 45 + Math.random() * 40;
-    const mountain = new THREE.Mesh(
-      new THREE.ConeGeometry(20 + Math.random() * 16, h, 7),
-      new THREE.MeshStandardMaterial({
-        map: mountainTexture,
-        roughness: 1,
-        metalness: 0
-      })
-    );
-
-    const angle = (i / 12) * Math.PI * 2;
-    const radius = 125 + Math.random() * 20;
-
-    mountain.position.set(
-      Math.cos(angle) * radius,
-      h * 0.45,
-      Math.sin(angle) * radius
-    );
-
-    mountain.castShadow = true;
-    mountain.receiveShadow = true;
-    scene.add(mountain);
-  }
-}
-
-function createTemple() {
-  const temple = new THREE.Group();
-
-  const baseTexture = createRockTexture();
-  const wallTexture = createTempleWallTexture();
-  const roofTexture = createRoofTexture();
-  const goldTexture = createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#ffd74b';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 1200; i++) {
-      ctx.fillStyle = `rgba(255, 210, 80, ${0.15 + Math.random() * 0.35})`;
-      ctx.fillRect(Math.random() * size, Math.random() * size, 4, 4);
+      #dialogue-modal {
+        width: calc(100% - 18px);
+        bottom: 170px;
+      }
     }
-  }, 256);
+  </style>
 
-  const baseMaterial = new THREE.MeshStandardMaterial({ map: baseTexture, roughness: 0.9 });
-  const wallMaterial = new THREE.MeshStandardMaterial({ map: wallTexture, roughness: 0.8 });
-  const roofMaterial = new THREE.MeshStandardMaterial({ map: roofTexture, roughness: 0.9 });
-  const goldMaterial = new THREE.MeshStandardMaterial({
-    map: goldTexture,
-    emissive: 0x4b3700,
-    roughness: 0.45
-  });
-  const stairsMaterial = new THREE.MeshStandardMaterial({
-    map: createWoodTexture(),
-    roughness: 0.85
-  });
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+</head>
+<body>
+  <div id="splash-screen">
+    <div class="splash-content">
+      <div class="gta-title">NEPAL WORLD 3D</div>
+      <div class="gta-subtitle">REALISTIC MOUNTAIN ADVENTURE</div>
+      <div class="credits-box">
+        <div class="credits-text">Created By</div>
+        <div class="author-name">GAJENDRA KUMAR KHADKA</div>
+        <div class="credits-text" style="font-size: 0.9rem; margin-top:8px; letter-spacing:2px;">&</div>
+        <div class="author-name">SHRIJAN KHADKA</div>
+      </div>
+      <button class="start-btn" onclick="launchGame()">Start Game</button>
+    </div>
+  </div>
 
-  const base = new THREE.Mesh(new THREE.BoxGeometry(16, 2, 16), baseMaterial);
-  base.position.y = 1;
-  temple.add(base);
+  <canvas id="game"></canvas>
+  <div id="scene-glow"></div>
+  <div id="scanlines"></div>
+  <div id="vignette"></div>
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(9, 8, 9), wallMaterial);
-  body.position.y = 6;
-  temple.add(body);
+  <div id="hud">
+    <div class="pill">🇳🇵 बागेश्वरी & नेपालगन्ज भ्याली</div>
+    <div class="pill">स्थान: नेपाल</div>
+  </div>
 
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(8.2, 5, 4), roofMaterial);
-  roof.position.y = 12.2;
-  roof.rotation.y = Math.PI / 4;
-  temple.add(roof);
+  <div id="quest-tracker">
+    <h4 id="q-title">मुख्य मिसन (Main Quest)</h4>
+    <p id="q-desc">बागेश्वरी मन्दिरमा पुजारीसँग भेट्नुहोस् र आशीर्वाद लिनुहोस्।</p>
+  </div>
 
-  const gajur = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 8), goldMaterial);
-  gajur.position.y = 15.5;
-  temple.add(gajur);
+  <div id="quest-menu">
+    <div class="quest-menu-header">
+      <div class="quest-menu-title">Quest Journal</div>
+      <button id="close-quest-menu" class="close-btn">Close</button>
+    </div>
+    <div id="quest-summary">0 accepted / 0 remaining</div>
+    <div id="quest-list"></div>
+  </div>
 
-  const stairs = new THREE.Mesh(new THREE.BoxGeometry(5, 0.7, 2), stairsMaterial);
-  stairs.position.set(0, 1.5, 9);
-  temple.add(stairs);
+  <div id="mini-map-container">
+    <canvas id="mini-map" width="180" height="180"></canvas>
+  </div>
 
-  temple.position.set(0, 0, -20);
-  scene.add(temple);
-}
+  <div id="mobile-controls" aria-label="Movement joystick">
+    <div id="move-joystick" class="joystick">
+      <div class="joystick-knob"></div>
+    </div>
+  </div>
 
-function createHouses() {
-  const housePositions = [
-    { x: -22, z: 10 },
-    { x: 28, z: 14 },
-    { x: 0, z: 28 }
-  ];
+  <div id="dialogue-modal">
+    <h3 id="dialogue-title">NPC Dialogue</h3>
+    <p id="dialogue-text">नमस्ते!</p>
+    <button class="action-btn" onclick="closeDialogue()">कुराकानी बन्द गर्नुहोस् (E)</button>
+  </div>
 
-  const wallTexture = createWoodTexture();
-  const roofTexture = createRoofTexture();
+  <div id="controls-hint">W, A, S, D = हिँड्नुहोस् | E = Interact | Tab = Quest Menu | Q = Unlock Cursor</div>
 
-  housePositions.forEach((pos) => {
-    const house = new THREE.Group();
+  <script src="main.js"></script>
+  <script>
+    function launchGame() {
+      const splash = document.getElementById('splash-screen');
+      splash.classList.add('hidden');
 
-    const wallMaterial = new THREE.MeshStandardMaterial({
-      map: wallTexture,
-      roughness: 0.9
-    });
-
-    const roofMaterial = new THREE.MeshStandardMaterial({
-      map: roofTexture,
-      roughness: 0.9
-    });
-
-    const doorMaterial = new THREE.MeshStandardMaterial({
-      map: createWoodTexture(),
-      roughness: 0.8
-    });
-
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), wallMaterial);
-    wall.position.y = 2;
-    house.add(wall);
-
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 3.6, 4), roofMaterial);
-    roof.position.y = 5.9;
-    roof.rotation.y = Math.PI / 4;
-    house.add(roof);
-
-    const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.4), doorMaterial);
-    door.position.set(0, 1.1, 3.1);
-    house.add(door);
-
-    const stall = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 1.5, 2.4),
-      new THREE.MeshStandardMaterial({
-        map: createWoodTexture(),
-        roughness: 0.85
-      })
-    );
-    stall.position.set(0, 0.75, 3.9);
-    house.add(stall);
-
-    house.position.set(pos.x, 0, pos.z);
-    scene.add(house);
-  });
-}
-
-function createTrees() {
-  const trunkTexture = createWoodTexture();
-  const leafTexture = createLeafTexture();
-
-  for (let i = 0; i < 18; i++) {
-    const tree = new THREE.Group();
-
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.48, 0.6, 3.4, 8),
-      new THREE.MeshStandardMaterial({
-        map: trunkTexture,
-        roughness: 0.9
-      })
-    );
-    trunk.position.y = 1.7;
-    tree.add(trunk);
-
-    const leaves = new THREE.Mesh(
-      new THREE.SphereGeometry(2.3, 12, 12),
-      new THREE.MeshStandardMaterial({
-        map: leafTexture,
-        roughness: 0.8
-      })
-    );
-    leaves.position.y = 4.5;
-    tree.add(leaves);
-
-    const angle = (i / 18) * Math.PI * 2;
-    const radius = 42 + Math.random() * 28;
-    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 18;
-    const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 18;
-
-    tree.position.set(x, 0, z);
-    scene.add(tree);
-  }
-}
-
-function createClouds() {
-  const cloudMaterial = new THREE.MeshStandardMaterial({
-    color: 0xf8fbff,
-    roughness: 1,
-    transparent: true,
-    opacity: 0.82
-  });
-
-  for (let i = 0; i < 8; i++) {
-    const cloud = new THREE.Group();
-
-    const puff1 = new THREE.Mesh(new THREE.SphereGeometry(3.2, 18, 18), cloudMaterial);
-    puff1.position.set(-6, 0, 0);
-    cloud.add(puff1);
-
-    const puff2 = new THREE.Mesh(new THREE.SphereGeometry(3.7, 18, 18), cloudMaterial);
-    puff2.position.set(4, 0, 0);
-    cloud.add(puff2);
-
-    const puff3 = new THREE.Mesh(new THREE.SphereGeometry(2.7, 18, 18), cloudMaterial);
-    puff3.position.set(0, 1.7, 0);
-    cloud.add(puff3);
-
-    cloud.position.set(
-      (Math.random() - 0.5) * 220,
-      30 + Math.random() * 30,
-      -40 - Math.random() * 60
-    );
-    scene.add(cloud);
-  }
-}
-
-function createHumanoid(color) {
-  const group = new THREE.Group();
-
-  const dressColor = new THREE.Color(color).getStyle();
-  const dressTexture = createNepaliDressTexture(dressColor, '#f5d88b');
-  const sashTexture = createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#f5d88b';
-    ctx.fillRect(0, 0, size, size);
-    ctx.strokeStyle = '#b4512d';
-    ctx.lineWidth = 10;
-    ctx.strokeRect(10, 10, size - 20, size - 20);
-  }, 256);
-  const skinTexture = createSkinTexture();
-  const topiTexture = createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#5d0a0a';
-    ctx.fillRect(0, 0, size, size);
-
-    for (let i = 0; i < 500; i++) {
-      ctx.fillStyle = `rgba(255,255,255,${0.03 + Math.random() * 0.1})`;
-      ctx.fillRect(Math.random() * size, Math.random() * size, 3, 3);
-    }
-  }, 256);
-
-  const bodyMaterial = new THREE.MeshStandardMaterial({ map: dressTexture, roughness: 0.9 });
-  const sashMaterial = new THREE.MeshStandardMaterial({ map: sashTexture, roughness: 0.8 });
-  const skinMaterial = new THREE.MeshStandardMaterial({ map: skinTexture, roughness: 0.9 });
-  const topiMaterial = new THREE.MeshStandardMaterial({ map: topiTexture, roughness: 0.9 });
-
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.7), bodyMaterial);
-  torso.position.y = 1.45;
-  group.add(torso);
-
-  const sash = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.14, 0.45), sashMaterial);
-  sash.position.y = 0.8;
-  group.add(sash);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 18), skinMaterial);
-  head.position.y = 2.5;
-  group.add(head);
-
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.25), skinMaterial);
-  neck.position.y = 2.0;
-  group.add(neck);
-
-  const topi = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.2), topiMaterial);
-  topi.position.y = 2.8;
-  group.add(topi);
-
-  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.82, 10), bodyMaterial);
-  leftArm.position.set(-0.52, 1.45, 0);
-  leftArm.rotation.z = 0.4;
-  group.add(leftArm);
-
-  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.82, 10), bodyMaterial);
-  rightArm.position.set(0.52, 1.45, 0);
-  rightArm.rotation.z = -0.4;
-  group.add(rightArm);
-
-  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 1.0, 10), bodyMaterial);
-  leftLeg.position.set(-0.18, 0.4, 0);
-  group.add(leftLeg);
-
-  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 1.0, 10), bodyMaterial);
-  rightLeg.position.set(0.18, 0.4, 0);
-  group.add(rightLeg);
-
-  group.userData = { leftArm, rightArm, leftLeg, rightLeg, torso, head, color };
-  return group;
-}
-
-function createNPCs() {
-  const pandit = createHumanoid(0xff3b30);
-  pandit.position.set(0, 0, -11);
-  pandit.userData.npcType = 'main_quest';
-  pandit.userData.name = 'पुजारी (Main Quest)';
-  pandit.userData.dialogue = 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल रूपमा शुरू भयो।';
-  scene.add(pandit);
-  npcs.push(pandit);
-
-  const teaOwner = createHumanoid(0x1e88e5);
-  teaOwner.position.set(-18, 0, 8);
-  teaOwner.userData.npcType = 'side_quest';
-  teaOwner.userData.name = 'दाइ (चिया पसल - Side Quest)';
-  teaOwner.userData.dialogue = 'नमस्ते बाबु! चिया खानुहुन्छ? गाउँमा स्वागत छ!';
-  scene.add(teaOwner);
-  npcs.push(teaOwner);
-}
-
-function createPlayer() {
-  player = createHumanoid(0x2bb673);
-  player.position.set(0, 0, 15);
-  scene.add(player);
-}
-
-function setupControls() {
-  document.addEventListener('keydown', (e) => {
-    if (e.code === 'KeyQ') {
-      togglePointerLock();
-      return;
+      if (typeof window.initGame === 'function') {
+        window.initGame();
+      } else {
+        console.warn('main.js failed to load.');
+        alert('Game engine failed to load. Please refresh the page.');
+      }
     }
 
-    if (e.code === 'Tab') {
-      if (questMenuOpen) closeQuestMenu();
-      else openQuestMenu();
-      return;
-    }
+    (function () {
+      function stabilizeView() {
+        if (typeof window.camera === 'undefined' || !window.camera) return;
 
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') moveForward = true;
-    if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = true;
-    if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLeft = true;
-    if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRight = true;
-    if (e.code === 'KeyE') checkInteractions();
-  });
+        const minimumCameraY = 2.8;
+        if (window.camera.position.y < minimumCameraY) {
+          window.camera.position.y = minimumCameraY;
+        }
 
-  document.addEventListener('keyup', (e) => {
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') moveForward = false;
-    if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = false;
-    if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLeft = false;
-    if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRight = false;
-  });
+        if (typeof window.cameraPitch !== 'undefined') {
+          window.cameraPitch = Math.max(-0.72, Math.min(1.15, window.cameraPitch));
+        }
 
-  const canvas = document.getElementById('game');
-  const closeButton = document.getElementById('close-quest-menu');
-  if (closeButton) closeButton.addEventListener('click', closeQuestMenu);
+        if (typeof window.cameraYaw !== 'undefined') {
+          window.cameraYaw = ((window.cameraYaw % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
+        }
+      }
 
-  document.addEventListener('click', () => {
-    if (!questMenuOpen && canvas && document.pointerLockElement !== canvas) {
-      canvas.requestPointerLock?.();
-    }
-  });
-
-  document.addEventListener('mousemove', (event) => {
-    if (document.pointerLockElement !== canvas || questMenuOpen) return;
-    cameraYaw -= event.movementX * 0.0025;
-    cameraPitch = THREE.MathUtils.clamp(cameraPitch - event.movementY * 0.0018, -0.9, 1.2);
-  });
-}
-
-function getMovementVector() {
-  const forward = { x: Math.sin(cameraYaw), z: Math.cos(cameraYaw) };
-  const right = { x: Math.cos(cameraYaw), z: -Math.sin(cameraYaw) };
-
-  let moveX = 0;
-  let moveZ = 0;
-
-  if (moveForward) { moveX += forward.x; moveZ += forward.z; }
-  if (moveBackward) { moveX -= forward.x; moveZ -= forward.z; }
-  if (moveLeft) { moveX -= right.x; moveZ -= right.z; }
-  if (moveRight) { moveX += right.x; moveZ += right.z; }
-
-  const length = Math.hypot(moveX, moveZ);
-  if (length > 0) {
-    moveX /= length;
-    moveZ /= length;
-  }
-
-  return { x: moveX, z: moveZ };
-}
-
-function updateHumanoidAnimation(character, isMoving) {
-  if (!character || !character.userData) return;
-
-  const swing = isMoving ? Math.sin(performance.now() * 0.012) * 0.8 : 0;
-  const armSwing = isMoving ? Math.sin(performance.now() * 0.012) * 0.9 : 0;
-
-  character.userData.leftArm.rotation.x = armSwing;
-  character.userData.rightArm.rotation.x = -armSwing;
-  character.userData.leftLeg.rotation.x = -swing;
-  character.userData.rightLeg.rotation.x = swing;
-}
-
-function updateQuestUI(title, description) {
-  const qTitle = document.getElementById('q-title');
-  const qDesc = document.getElementById('q-desc');
-  if (qTitle) qTitle.innerText = title;
-  if (qDesc) qDesc.innerText = description;
-}
-
-function checkInteractions() {
-  if (!player) return;
-  const nearNpc = npcs.find((npc) => player.position.distanceTo(npc.position) < 4);
-  if (!nearNpc) {
-    closeDialogue();
-    return;
-  }
-
-  const title = document.getElementById('dialogue-title');
-  const text = document.getElementById('dialogue-text');
-
-  title.innerText = nearNpc.userData.name;
-  text.innerText = nearNpc.userData.dialogue;
-  document.getElementById('dialogue-modal').style.display = 'block';
-
-  if (nearNpc.userData.npcType === 'main_quest' && gameState.mainQuestStep === 0) {
-    gameState.mainQuestStep = 1;
-    updateQuestUI('मुख्य मिसन (Main Quest)', 'अब दाइसँग चिया पसलमा जानुहोस् र चिया माग्नुहोस्।');
-    return;
-  }
-
-  if (nearNpc.userData.npcType === 'side_quest' && gameState.mainQuestStep === 1) {
-    gameState.mainQuestStep = 2;
-    gameState.sideQuests.teaStall = true;
-    updateQuestUI('मिशन पूरा भयो (Quest Complete)', 'तपाईंले चिया पसलको मिसन पूरा गर्नुभयो। अब मुख्य मार्गमा अगाडि जानुहोस्।');
-    return;
-  }
-
-  if (gameState.mainQuestStep >= 2) {
-    updateQuestUI('मिशन पूरा भयो (Quest Complete)', 'तपाईंले सबै मुख्य उद्देश्य पूरा गर्नुभयो। नेपालको यात्रा सफलतापूर्वक समाप्त भयो।');
-  }
-}
-
-window.closeDialogue = function() {
-  const modal = document.getElementById('dialogue-modal');
-  if (modal) modal.style.display = 'none';
-};
-
-function onWindowResize() {
-  if (!camera || !renderer) return;
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function animate() {
-  requestAnimationFrame(animate);
-
-  if (!player || !camera || !renderer || !scene) return;
-
-  const dt = clock ? clock.getDelta() : 0.016;
-  const moveVector = getMovementVector();
-  const movementMagnitude = Math.hypot(moveVector.x, moveVector.z);
-
-  const speed = 8.5;
-  if (movementMagnitude > 0) {
-    player.position.x += moveVector.x * speed * dt;
-    player.position.z += moveVector.z * speed * dt;
-    player.rotation.y = Math.atan2(moveVector.x, moveVector.z);
-  }
-
-  const maxDistance = 92;
-  player.position.x = THREE.MathUtils.clamp(player.position.x, -maxDistance, maxDistance);
-  player.position.z = THREE.MathUtils.clamp(player.position.z, -maxDistance, maxDistance);
-
-  updateHumanoidAnimation(player, movementMagnitude > 0.01);
-
-  npcs.forEach((npc) => {
-    const idle = Math.sin(performance.now() * 0.004 + npc.position.x) * 0.2;
-    updateHumanoidAnimation(npc, false);
-    npc.userData.leftArm.rotation.x += idle * 0.01;
-    npc.userData.rightArm.rotation.x -= idle * 0.01;
-  });
-
-  const cameraX = player.position.x - Math.sin(cameraYaw) * cameraDistance;
-  const cameraY = player.position.y + 5.2 + Math.sin(cameraPitch) * cameraDistance * 0.8;
-  const cameraZ = player.position.z - Math.cos(cameraYaw) * cameraDistance;
-
-  camera.position.x += (cameraX - camera.position.x) * 0.12;
-  camera.position.y += (cameraY - camera.position.y) * 0.12;
-  camera.position.z += (cameraZ - camera.position.z) * 0.12;
-
-  camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
-
-  if (miniMapCtx) drawMiniMap();
-  renderer.render(scene, camera);
-}
-
-window.addEventListener('pointerlockchange', () => {
-  if (document.pointerLockElement === document.getElementById('game')) {
-    document.body.style.cursor = 'none';
-  } else {
-    document.body.style.cursor = 'auto';
-  }
-});
-
-window.addEventListener('blur', () => {
-  moveForward = false;
-  moveBackward = false;
-  moveLeft = false;
-  moveRight = false;
-});
-
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyQ') {
-    togglePointerLock();
-  }
-});
+      setInterval(stabilizeView, 50);
+    })();
+  </script>
+</body>
+</html>
