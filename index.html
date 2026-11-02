@@ -15,6 +15,7 @@
       --red: #dc3545;
       --green: #28a745;
       --sky: #88c9f6;
+      --sky-2: #cfe8ff;
       --text: #f3f7f5;
       --muted: #dfe5e2;
       --shadow: rgba(0,0,0,0.55);
@@ -27,8 +28,8 @@
       height: 100%;
       overflow: hidden;
       background:
-        radial-gradient(circle at top, rgba(44, 98, 84, 0.42), transparent 30%),
-        linear-gradient(180deg, #03140f 0%, var(--bg-deep) 100%);
+        radial-gradient(circle at top, rgba(57, 146, 116, 0.42), transparent 26%),
+        linear-gradient(180deg, #03150f 0%, var(--bg-deep) 100%);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: var(--text);
       cursor: none;
@@ -44,9 +45,10 @@
       display: block;
       z-index: 1;
       cursor: none;
-      background: var(--sky);
-      filter: saturate(1.08) contrast(1.05);
-      box-shadow: inset 0 0 60px rgba(0,0,0,0.14);
+      background:
+        linear-gradient(180deg, #7bc0ff 0%, #bfe2ff 28%, #d5ebff 54%, #88c9f6 100%);
+      filter: saturate(1.22) contrast(1.08) brightness(1.02);
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.12);
     }
 
     #scene-glow {
@@ -54,7 +56,9 @@
       inset: 0;
       pointer-events: none;
       z-index: 2;
-      background: radial-gradient(circle at center, transparent 0%, rgba(8, 18, 16, 0.06) 50%, rgba(0,0,0,0.28) 100%);
+      background:
+        radial-gradient(circle at 50% 32%, rgba(255, 255, 255, 0.52), transparent 23%),
+        radial-gradient(circle at center, transparent 0%, rgba(8, 18, 16, 0.06) 52%, rgba(0,0,0,0.34) 100%);
     }
 
     #scanlines {
@@ -64,20 +68,28 @@
       pointer-events: none;
       background: repeating-linear-gradient(
         to bottom,
-        rgba(255,255,255,0.04),
-        rgba(255,255,255,0.04) 1px,
+        rgba(255,255,255,0.05),
+        rgba(255,255,255,0.05) 1px,
         transparent 2px,
         transparent 4px
       );
       mix-blend-mode: soft-light;
-      opacity: 0.65;
+      opacity: 0.75;
+    }
+
+    #vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      background: radial-gradient(circle at center, transparent 58%, rgba(0,0,0,0.38) 100%);
     }
 
     #splash-screen {
       position: fixed;
       inset: 0;
       background:
-        radial-gradient(circle at center, rgba(21, 70, 53, 0.9) 0%, rgba(5, 12, 10, 0.98) 48%, rgba(3, 7, 6, 1) 100%);
+        radial-gradient(circle at center, rgba(21, 70, 53, 0.92) 0%, rgba(5, 12, 10, 0.98) 48%, rgba(3, 7, 6, 1) 100%);
       z-index: 100;
       display: flex;
       flex-direction: column;
@@ -534,6 +546,7 @@
   <canvas id="game"></canvas>
   <div id="scene-glow"></div>
   <div id="scanlines"></div>
+  <div id="vignette"></div>
 
   <div id="hud">
     <div class="pill">🇳🇵 बागेश्वरी & नेपालगन्ज भ्याली</div>
@@ -579,6 +592,27 @@
         alert('Game engine failed to load. Please refresh the page.');
       }
     }
+
+    (function () {
+      function stabilizeView() {
+        if (typeof camera === 'undefined' || !camera) return;
+
+        const minimumCameraY = 2.8;
+        if (camera.position.y < minimumCameraY) {
+          camera.position.y = minimumCameraY;
+        }
+
+        if (typeof cameraPitch !== 'undefined') {
+          cameraPitch = Math.max(-0.72, Math.min(1.15, cameraPitch));
+        }
+
+        if (typeof cameraYaw !== 'undefined') {
+          cameraYaw = ((cameraYaw % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
+        }
+      }
+
+      setInterval(stabilizeView, 50);
+    })();
   </script>
 </body>
 </html>
