@@ -1,6 +1,4 @@
-// NEPAL WORLD 3D - Advanced Himalayan Village Experience
-// Created by Gajendra Kumar Khadka & Shrijan Khadka
-
+// NEPAL WORLD 3D - Safe startup + advanced Himalayan village
 let scene, camera, renderer, player, clock;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 let sunLight, moonLight;
@@ -17,70 +15,81 @@ const worldProps = [];
 
 window.initGame = function() {
   const canvas = document.getElementById('game');
-  if (!canvas) return;
-
-  if (!window.THREE) {
-    console.error('Three.js failed to load. Check the CDN or browser network connection.');
-    const splash = document.getElementById('splash-screen');
-    if (splash) splash.classList.remove('hidden');
+  if (!canvas) {
+    console.error('Canvas #game not found.');
     return;
   }
 
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x9ad8ff);
-  scene.fog = new THREE.Fog(0xbfe7ff, 28, 220);
+  if (!window.THREE) {
+    console.error('Three.js failed to load. Check the CDN or browser network.');
+    return;
+  }
 
-  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
-  camera.position.set(0, 7, 18);
+  try {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9ad8ff);
+    scene.fog = new THREE.Fog(0xbfe7ff, 28, 220);
 
-  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x9ad8ff, 1);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputEncoding = THREE.sRGBEncoding;
+    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
+    camera.position.set(0, 7, 18);
 
-  clock = new THREE.Clock();
+    renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      alpha: false
+    });
 
-  const hemi = new THREE.HemisphereLight(0xdff5ff, 0x1d401b, 0.9);
-  scene.add(hemi);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x9ad8ff, 1);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
 
-  sunLight = new THREE.DirectionalLight(0xfff2bf, 1.4);
-  sunLight.position.set(80, 120, 40);
-  sunLight.castShadow = true;
-  sunLight.shadow.mapSize.set(2048, 2048);
-  sunLight.shadow.camera.left = -120;
-  sunLight.shadow.camera.right = 120;
-  sunLight.shadow.camera.top = 120;
-  sunLight.shadow.camera.bottom = -120;
-  scene.add(sunLight);
+    clock = new THREE.Clock();
 
-  moonLight = new THREE.DirectionalLight(0x8ab8ff, 0.25);
-  moonLight.position.set(-60, 60, -40);
-  scene.add(moonLight);
+    const hemi = new THREE.HemisphereLight(0xdff5ff, 0x1d401b, 0.9);
+    scene.add(hemi);
 
-  const sun = new THREE.Mesh(
-    new THREE.SphereGeometry(6, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffd76a })
-  );
-  sun.position.set(90, 110, 30);
-  scene.add(sun);
-  worldProps.push(sun);
+    sunLight = new THREE.DirectionalLight(0xfff2bf, 1.4);
+    sunLight.position.set(80, 120, 40);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -120;
+    sunLight.shadow.camera.right = 120;
+    sunLight.shadow.camera.top = 120;
+    sunLight.shadow.camera.bottom = -120;
+    scene.add(sunLight);
 
-  createSkyClouds();
-  createTerrain();
-  createVillage();
-  createNPCs();
-  createPlayer();
+    moonLight = new THREE.DirectionalLight(0x8ab8ff, 0.25);
+    moonLight.position.set(-60, 60, -40);
+    scene.add(moonLight);
 
-  setupControls();
-  window.addEventListener('resize', onWindowResize);
-  renderer.setAnimationLoop(animate);
+    const sun = new THREE.Mesh(
+      new THREE.SphereGeometry(6, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffd76a })
+    );
+    sun.position.set(90, 110, 30);
+    scene.add(sun);
+
+    createSkyClouds();
+    createTerrain();
+    createVillage();
+    createNPCs();
+    createPlayer();
+
+    setupControls();
+    window.addEventListener('resize', onWindowResize);
+
+    renderer.setAnimationLoop(animate);
+
+  } catch (err) {
+    console.error('Failed to initialize Three.js scene:', err);
+  }
 };
 
 function createSkyClouds() {
-  const cloudMaterial = new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color: 0xf2f7ff,
     roughness: 0.95,
     metalness: 0
@@ -89,16 +98,22 @@ function createSkyClouds() {
   for (let i = 0; i < 12; i++) {
     const cloud = new THREE.Group();
     const puffCount = 5 + Math.floor(Math.random() * 5);
+
     for (let j = 0; j < puffCount; j++) {
       const puff = new THREE.Mesh(
         new THREE.SphereGeometry(2 + Math.random() * 2.5, 18, 18),
-        cloudMaterial
+        material
       );
       puff.position.set((j - puffCount / 2) * 2.2, Math.random() * 1.4, Math.random() * 2);
       cloud.add(puff);
     }
-    cloud.position.set(-80 + Math.random() * 160, 40 + Math.random() * 36, -90 - Math.random() * 70);
-    cloud.userData = { speed: 0.5 + Math.random() * 0.7, drift: Math.random() * Math.PI * 2 };
+
+    cloud.position.set(
+      -80 + Math.random() * 160,
+      40 + Math.random() * 36,
+      -90 - Math.random() * 70
+    );
+    cloud.userData = { speed: 0.5 + Math.random() * 0.7 };
     scene.add(cloud);
     clouds.push(cloud);
   }
@@ -107,8 +122,8 @@ function createSkyClouds() {
 function createTerrain() {
   const geometry = new THREE.PlaneGeometry(400, 400, 220, 220);
   geometry.rotateX(-Math.PI / 2);
-  const positions = geometry.attributes.position;
 
+  const positions = geometry.attributes.position;
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i);
     const z = positions.getZ(i);
@@ -116,16 +131,16 @@ function createTerrain() {
     const hill = Math.sin(x * 0.12) * 2.5 + Math.cos(z * 0.09) * 2.2 + Math.max(0, 18 - distance * 0.08);
     positions.setY(i, hill);
   }
-
   geometry.computeVertexNormals();
 
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x497b3d,
-    roughness: 1,
-    metalness: 0.05
-  });
-
-  const ground = new THREE.Mesh(geometry, material);
+  const ground = new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({
+      color: 0x497b3d,
+      roughness: 1,
+      metalness: 0.05
+    })
+  );
   ground.receiveShadow = true;
   scene.add(ground);
 
@@ -149,7 +164,6 @@ function createTerrain() {
   river.receiveShadow = true;
   worldWater = river;
   scene.add(river);
-  worldProps.push(river);
 
   const stonePath = new THREE.Mesh(
     new THREE.BoxGeometry(18, 0.4, 54),
@@ -163,47 +177,6 @@ function createTerrain() {
   stonePath.rotation.y = Math.PI / 12;
   stonePath.receiveShadow = true;
   scene.add(stonePath);
-
-  const bridge = new THREE.Group();
-  const bridgeBase = new THREE.Mesh(
-    new THREE.BoxGeometry(12, 0.5, 4),
-    new THREE.MeshStandardMaterial({ color: 0x8b6a4a, roughness: 1 })
-  );
-  bridgeBase.position.y = 0.8;
-  bridge.add(bridgeBase);
-
-  for (const x of [-4.5, 0, 4.5]) {
-    const post = new THREE.Mesh(
-      new THREE.BoxGeometry(0.35, 1.6, 0.35),
-      new THREE.MeshStandardMaterial({ color: 0x7b5c3d, roughness: 1 })
-    );
-    post.position.set(x, 0.8, -1.7);
-    bridge.add(post);
-    const post2 = post.clone();
-    post2.position.z = 1.7;
-    bridge.add(post2);
-  }
-
-  for (const z of [-1.2, 1.2]) {
-    const rail = new THREE.Mesh(
-      new THREE.BoxGeometry(10.8, 0.2, 0.12),
-      new THREE.MeshStandardMaterial({ color: 0x6a4d2b, roughness: 1 })
-    );
-    rail.position.set(0, 1.5, z);
-    bridge.add(rail);
-  }
-
-  bridge.position.set(0, 0.2, 34);
-  scene.add(bridge);
-  worldProps.push(bridge);
-
-  const shrineRing = new THREE.Mesh(
-    new THREE.TorusGeometry(8, 0.5, 12, 32),
-    new THREE.MeshStandardMaterial({ color: 0xc39a4f, roughness: 0.7, metalness: 0.2 })
-  );
-  shrineRing.rotation.x = Math.PI / 2;
-  shrineRing.position.set(-14, 0.3, -28);
-  scene.add(shrineRing);
 }
 
 function createStoneTexture() {
@@ -298,22 +271,6 @@ function createTemple() {
   );
   steps.position.set(0, 0.35, 8.9);
   temple.add(steps);
-
-  for (const x of [-3.5, 3.5]) {
-    const lamp = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.2, 1.6, 8),
-      new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.7, roughness: 0.3 })
-    );
-    lamp.position.set(x, 1.2, 7.7);
-    temple.add(lamp);
-
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.35, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffdb6e, emissive: 0xffc857, emissiveIntensity: 1.2 })
-    );
-    glow.position.set(x, 2.3, 7.7);
-    temple.add(glow);
-  }
 
   temple.position.set(0, 0, -20);
   scene.add(temple);
@@ -441,7 +398,10 @@ function createTrees() {
     for (let i = 0; i < 3; i++) {
       const leaf = new THREE.Mesh(
         new THREE.SphereGeometry(1.8 + i * 0.6, 16, 16),
-        new THREE.MeshStandardMaterial({ color: i === 0 ? 0x2e8b4d : i === 1 ? 0x3caf58 : 0x48c76c, roughness: 0.95 })
+        new THREE.MeshStandardMaterial({
+          color: i === 0 ? 0x2e8b4d : i === 1 ? 0x3caf58 : 0x48c76c,
+          roughness: 0.95
+        })
       );
       leaf.position.set((i - 1) * 1.2, 4.6 + i * 0.8, (i % 2 === 0 ? 0.8 : -0.6));
       leaf.castShadow = true;
@@ -450,7 +410,6 @@ function createTrees() {
 
     tree.position.set(x, 0, z);
     scene.add(tree);
-    worldProps.push(tree);
   });
 }
 
@@ -499,6 +458,7 @@ function createFence() {
     bar.position.set(-25 + i * 3.8, 1.3, 25);
     fence.add(bar);
   }
+
   scene.add(fence);
 }
 
@@ -661,6 +621,7 @@ function setupControls() {
 
 function checkInteractions() {
   if (!player) return;
+
   npcs.forEach((npc) => {
     if (player.position.distanceTo(npc.position) < 4.2) {
       document.getElementById('dialogue-title').innerText = npc.userData.name;
@@ -677,11 +638,13 @@ function checkInteractions() {
 }
 
 window.closeDialogue = function() {
-  document.getElementById('dialogue-modal').style.display = 'none';
+  const modal = document.getElementById('dialogue-modal');
+  if (modal) modal.style.display = 'none';
 };
 
 function onWindowResize() {
   if (!camera || !renderer) return;
+
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
