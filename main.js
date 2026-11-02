@@ -8,8 +8,10 @@ const gameState = {
 };
 
 let cameraYaw = Math.PI;
-let cameraPitch = 0.55;
+let cameraPitch = 0.52;
 let cameraDistance = 12.5;
+let isGameStarted = false;
+let clock;
 
 function createCanvasTexture(drawFn, size = 256) {
   const canvas = document.createElement('canvas');
@@ -26,21 +28,21 @@ function createCanvasTexture(drawFn, size = 256) {
 
 function createGrassTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#5ca64c';
+    ctx.fillStyle = '#5aa74e';
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 3000; i++) {
+    for (let i = 0; i < 3500; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      const shade = 75 + Math.random() * 80;
-      ctx.fillStyle = `rgba(${shade}, ${shade + 25}, ${shade - 20}, 0.7)`;
+      const shade = 70 + Math.random() * 80;
+      ctx.fillStyle = `rgba(${shade}, ${shade + 28}, ${shade - 18}, 0.72)`;
       ctx.fillRect(x, y, 2, 2);
     }
 
-    for (let i = 0; i < 800; i++) {
+    for (let i = 0; i < 900; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      ctx.strokeStyle = 'rgba(15, 85, 20, 0.3)';
+      ctx.strokeStyle = 'rgba(12, 78, 20, 0.28)';
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + 4 + Math.random() * 8, y + 5 + Math.random() * 8);
@@ -51,17 +53,17 @@ function createGrassTexture() {
 
 function createMountainTexture() {
   return createCanvasTexture((ctx, size) => {
-    const grad = ctx.createLinearGradient(0, 0, 0, size);
-    grad.addColorStop(0, '#f4f8ff');
-    grad.addColorStop(0.55, '#dfeaf7');
-    grad.addColorStop(1, '#beced7');
-    ctx.fillStyle = grad;
+    const gradient = ctx.createLinearGradient(0, 0, 0, size);
+    gradient.addColorStop(0, '#f4f9ff');
+    gradient.addColorStop(0.55, '#dfeaf7');
+    gradient.addColorStop(1, '#becfd9');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 1500; i++) {
+    for (let i = 0; i < 1800; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      const r = 2 + Math.random() * 10;
+      const r = 2 + Math.random() * 9;
       ctx.fillStyle = `rgba(255,255,255,${0.08 + Math.random() * 0.22})`;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -72,15 +74,15 @@ function createMountainTexture() {
 
 function createRockTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#8f8f8f';
+    ctx.fillStyle = '#8d8d8d';
     ctx.fillRect(0, 0, size, size);
 
     for (let i = 0; i < 7000; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      const w = 2 + Math.random() * 5;
-      const h = 2 + Math.random() * 5;
-      ctx.fillStyle = `rgba(${120 + Math.random() * 50}, ${120 + Math.random() * 50}, ${120 + Math.random() * 50}, 0.6)`;
+      const w = 2 + Math.random() * 6;
+      const h = 2 + Math.random() * 6;
+      ctx.fillStyle = `rgba(${120 + Math.random() * 50}, ${120 + Math.random() * 50}, ${120 + Math.random() * 50}, 0.65)`;
       ctx.fillRect(x, y, w, h);
     }
   }, 256);
@@ -88,10 +90,10 @@ function createRockTexture() {
 
 function createTempleWallTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#ba1d1d';
+    ctx.fillStyle = '#b71d1d';
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 5000; i++) {
+    for (let i = 0; i < 4500; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
       const s = 1 + Math.random() * 3;
@@ -103,7 +105,7 @@ function createTempleWallTexture() {
 
 function createRoofTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#1f1f1f';
+    ctx.fillStyle = '#1e1e1e';
     ctx.fillRect(0, 0, size, size);
 
     for (let i = 0; i < size; i += 16) {
@@ -126,11 +128,11 @@ function createRoofTexture() {
 
 function createWoodTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#8a5a2d';
+    ctx.fillStyle = '#8d5a2d';
     ctx.fillRect(0, 0, size, size);
 
     for (let i = 0; i < size; i += 8) {
-      ctx.strokeStyle = 'rgba(55, 30, 10, 0.7)';
+      ctx.strokeStyle = 'rgba(60, 28, 10, 0.72)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(i, 0);
@@ -153,11 +155,11 @@ function createLeafTexture() {
     ctx.fillStyle = '#2e9d47';
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 1200; i++) {
+    for (let i = 0; i < 1300; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
       const r = 2 + Math.random() * 5;
-      ctx.fillStyle = `rgba(${60 + Math.random() * 60}, ${120 + Math.random() * 60}, ${46 + Math.random() * 60}, 0.7)`;
+      ctx.fillStyle = `rgba(${65 + Math.random() * 60}, ${120 + Math.random() * 70}, ${45 + Math.random() * 60}, 0.72)`;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
@@ -170,11 +172,11 @@ function createSkinTexture() {
     ctx.fillStyle = '#f0d0a8';
     ctx.fillRect(0, 0, size, size);
 
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < 1000; i++) {
       const x = Math.random() * size;
       const y = Math.random() * size;
       const s = 1 + Math.random() * 3;
-      ctx.fillStyle = `rgba(180, 120, 80, ${0.06 + Math.random() * 0.15})`;
+      ctx.fillStyle = `rgba(170, 120, 90, ${0.06 + Math.random() * 0.16})`;
       ctx.fillRect(x, y, s, s);
     }
   }, 256);
@@ -182,7 +184,7 @@ function createSkinTexture() {
 
 function createClothTexture() {
   return createCanvasTexture((ctx, size) => {
-    ctx.fillStyle = '#d9d9d9';
+    ctx.fillStyle = '#dddddd';
     ctx.fillRect(0, 0, size, size);
 
     for (let x = 0; x < size; x += 22) {
@@ -198,6 +200,9 @@ function createClothTexture() {
 }
 
 window.initGame = function() {
+  if (isGameStarted) return;
+  isGameStarted = true;
+
   try {
     const canvas = document.getElementById('game');
     if (!canvas) {
@@ -211,8 +216,8 @@ window.initGame = function() {
     }
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.FogExp2(0xcfe8ff, 0.004);
+    scene.background = new THREE.Color(0x88c9f6);
+    scene.fog = new THREE.FogExp2(0xdfefff, 0.004);
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 6, 14);
@@ -227,14 +232,16 @@ window.initGame = function() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.75);
     scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xfff4d6, 1.3);
-    sun.position.set(80, 140, 40);
+    const sun = new THREE.DirectionalLight(0xfff3d6, 1.35);
+    sun.position.set(90, 140, 40);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     scene.add(sun);
+
+    clock = new THREE.Clock();
 
     createGround();
     createRoad();
@@ -266,10 +273,7 @@ function createGround() {
     metalness: 0.02
   });
 
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(350, 350, 64, 64),
-    material
-  );
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(350, 350, 64, 64), material);
   plane.rotation.x = -Math.PI / 2;
   plane.receiveShadow = true;
   scene.add(plane);
@@ -277,10 +281,10 @@ function createGround() {
 
 function createRoad() {
   const roadTexture = createWoodTexture();
-  roadTexture.repeat.set(12, 1);
+  roadTexture.repeat.set(18, 1);
 
   const road = new THREE.Mesh(
-    new THREE.BoxGeometry(18, 0.2, 140),
+    new THREE.BoxGeometry(20, 0.18, 150),
     new THREE.MeshStandardMaterial({
       map: roadTexture,
       roughness: 0.9
@@ -307,11 +311,13 @@ function createHimalayas() {
 
     const angle = (i / 12) * Math.PI * 2;
     const radius = 125 + Math.random() * 20;
+
     mountain.position.set(
       Math.cos(angle) * radius,
       h * 0.45,
       Math.sin(angle) * radius
     );
+
     mountain.castShadow = true;
     mountain.receiveShadow = true;
     scene.add(mountain);
@@ -334,27 +340,14 @@ function createTemple() {
     }
   }, 256);
 
-  const baseMaterial = new THREE.MeshStandardMaterial({
-    map: baseTexture,
-    roughness: 0.9
-  });
-
-  const wallMaterial = new THREE.MeshStandardMaterial({
-    map: wallTexture,
-    roughness: 0.8
-  });
-
-  const roofMaterial = new THREE.MeshStandardMaterial({
-    map: roofTexture,
-    roughness: 0.9
-  });
-
+  const baseMaterial = new THREE.MeshStandardMaterial({ map: baseTexture, roughness: 0.9 });
+  const wallMaterial = new THREE.MeshStandardMaterial({ map: wallTexture, roughness: 0.8 });
+  const roofMaterial = new THREE.MeshStandardMaterial({ map: roofTexture, roughness: 0.9 });
   const goldMaterial = new THREE.MeshStandardMaterial({
     map: goldTexture,
     emissive: 0x4b3700,
     roughness: 0.45
   });
-
   const stairsMaterial = new THREE.MeshStandardMaterial({
     map: createWoodTexture(),
     roughness: 0.85
@@ -472,6 +465,7 @@ function createTrees() {
     const radius = 42 + Math.random() * 28;
     const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 18;
     const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 18;
+
     tree.position.set(x, 0, z);
     scene.add(tree);
   }
@@ -479,31 +473,31 @@ function createTrees() {
 
 function createClouds() {
   const cloudMaterial = new THREE.MeshStandardMaterial({
-    color: 0xf7f9ff,
+    color: 0xf8fbff,
     roughness: 1,
     transparent: true,
-    opacity: 0.8
+    opacity: 0.82
   });
 
   for (let i = 0; i < 8; i++) {
     const cloud = new THREE.Group();
 
-    const puff1 = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 16), cloudMaterial);
+    const puff1 = new THREE.Mesh(new THREE.SphereGeometry(3.2, 18, 18), cloudMaterial);
     puff1.position.set(-6, 0, 0);
     cloud.add(puff1);
 
-    const puff2 = new THREE.Mesh(new THREE.SphereGeometry(3.5, 16, 16), cloudMaterial);
+    const puff2 = new THREE.Mesh(new THREE.SphereGeometry(3.7, 18, 18), cloudMaterial);
     puff2.position.set(4, 0, 0);
     cloud.add(puff2);
 
-    const puff3 = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), cloudMaterial);
-    puff3.position.set(0, 1.5, 0);
+    const puff3 = new THREE.Mesh(new THREE.SphereGeometry(2.7, 18, 18), cloudMaterial);
+    puff3.position.set(0, 1.7, 0);
     cloud.add(puff3);
 
     cloud.position.set(
       (Math.random() - 0.5) * 220,
       30 + Math.random() * 30,
-      -50 - Math.random() * 60
+      -40 - Math.random() * 60
     );
     scene.add(cloud);
   }
@@ -539,17 +533,48 @@ function createHumanoid(color) {
     roughness: 0.9
   });
 
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.6), bodyMaterial);
-  body.position.y = 1.15;
-  group.add(body);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.7), bodyMaterial);
+  torso.position.y = 1.45;
+  group.add(torso);
 
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 18), skinMaterial);
-  head.position.y = 2.1;
+  head.position.y = 2.5;
   group.add(head);
 
-  const topi = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.22), topiMaterial);
-  topi.position.y = 2.45;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.25), skinMaterial);
+  neck.position.y = 2.0;
+  group.add(neck);
+
+  const topi = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.2), topiMaterial);
+  topi.position.y = 2.8;
   group.add(topi);
+
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.82, 10), bodyMaterial);
+  leftArm.position.set(-0.52, 1.45, 0);
+  leftArm.rotation.z = 0.4;
+  group.add(leftArm);
+
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.82, 10), bodyMaterial);
+  rightArm.position.set(0.52, 1.45, 0);
+  rightArm.rotation.z = -0.4;
+  group.add(rightArm);
+
+  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 1.0, 10), bodyMaterial);
+  leftLeg.position.set(-0.18, 0.4, 0);
+  group.add(leftLeg);
+
+  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 1.0, 10), bodyMaterial);
+  rightLeg.position.set(0.18, 0.4, 0);
+  group.add(rightLeg);
+
+  group.userData = {
+    leftArm,
+    rightArm,
+    leftLeg,
+    rightLeg,
+    torso,
+    head
+  };
 
   return group;
 }
@@ -557,21 +582,17 @@ function createHumanoid(color) {
 function createNPCs() {
   const pandit = createHumanoid(0xff3b30);
   pandit.position.set(0, 0, -11);
-  pandit.userData = {
-    name: 'पुजारी (Main Quest)',
-    type: 'main_quest',
-    dialogue: 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल भयो!'
-  };
+  pandit.userData.npcType = 'main_quest';
+  pandit.userData.name = 'पुजारी (Main Quest)';
+  pandit.userData.dialogue = 'नमस्कार! बागेश्वरी मन्दिरमा स्वागत छ। तपाईंको मुख्य मिसन सफल भयो!';
   scene.add(pandit);
   npcs.push(pandit);
 
   const teaOwner = createHumanoid(0x1e88e5);
   teaOwner.position.set(-18, 0, 8);
-  teaOwner.userData = {
-    name: 'दाइ (चिया पसल - Side Quest)',
-    type: 'side_quest',
-    dialogue: 'नमस्ते बाबु! चिया खानुहुन्छ? गाउँमा स्वागत छ!'
-  };
+  teaOwner.userData.npcType = 'side_quest';
+  teaOwner.userData.name = 'दाइ (चिया पसल - Side Quest)';
+  teaOwner.userData.dialogue = 'नमस्ते बाबु! चिया खानुहुन्छ? गाउँमा स्वागत छ!';
   scene.add(teaOwner);
   npcs.push(teaOwner);
 }
@@ -608,6 +629,61 @@ function setupControls() {
   });
 }
 
+function getMovementVector() {
+  const forward = {
+    x: -Math.sin(cameraYaw),
+    z: -Math.cos(cameraYaw)
+  };
+
+  const right = {
+    x: Math.cos(cameraYaw),
+    z: -Math.sin(cameraYaw)
+  };
+
+  let moveX = 0;
+  let moveZ = 0;
+
+  if (moveForward) {
+    moveX += forward.x;
+    moveZ += forward.z;
+  }
+
+  if (moveBackward) {
+    moveX -= forward.x;
+    moveZ -= forward.z;
+  }
+
+  if (moveLeft) {
+    moveX -= right.x;
+    moveZ -= right.z;
+  }
+
+  if (moveRight) {
+    moveX += right.x;
+    moveZ += right.z;
+  }
+
+  const length = Math.hypot(moveX, moveZ);
+  if (length > 0) {
+    moveX /= length;
+    moveZ /= length;
+  }
+
+  return { x: moveX, z: moveZ };
+}
+
+function updateHumanoidAnimation(character, isMoving, dt) {
+  if (!character || !character.userData) return;
+
+  const swing = isMoving ? Math.sin(performance.now() * 0.012) * 0.8 : 0;
+  const armSwing = isMoving ? Math.sin(performance.now() * 0.012) * 0.9 : 0;
+
+  character.userData.leftArm.rotation.x = armSwing;
+  character.userData.rightArm.rotation.x = -armSwing;
+  character.userData.leftLeg.rotation.x = -swing;
+  character.userData.rightLeg.rotation.x = swing;
+}
+
 function checkInteractions() {
   npcs.forEach((npc) => {
     if (player.position.distanceTo(npc.position) < 4) {
@@ -619,7 +695,7 @@ function checkInteractions() {
 
       document.getElementById('dialogue-modal').style.display = 'block';
 
-      if (npc.userData.type === 'main_quest' && gameState.mainQuestStep === 0) {
+      if (npc.userData.npcType === 'main_quest' && gameState.mainQuestStep === 0) {
         gameState.mainQuestStep = 1;
         document.getElementById('q-title').innerText = 'Side Quest: चिया पसल';
         document.getElementById('q-desc').innerText = 'गाउँको चिया पसलका दाइसँग भेट्नुहोस्।';
@@ -644,16 +720,29 @@ function animate() {
 
   if (!player || !camera || !renderer) return;
 
-  const speed = 0.16;
+  const dt = clock.getDelta();
+  const moveVector = getMovementVector();
+  const movementMagnitude = Math.hypot(moveVector.x, moveVector.z);
 
-  if (moveForward) player.position.z -= speed;
-  if (moveBackward) player.position.z += speed;
-  if (moveLeft) player.position.x -= speed;
-  if (moveRight) player.position.x += speed;
+  const speed = 8.5;
+  if (movementMagnitude > 0) {
+    player.position.x += moveVector.x * speed * dt;
+    player.position.z += moveVector.z * speed * dt;
+    player.rotation.y = Math.atan2(moveVector.x, moveVector.z);
+  }
 
-  const maxDistance = 90;
+  const maxDistance = 92;
   player.position.x = THREE.MathUtils.clamp(player.position.x, -maxDistance, maxDistance);
   player.position.z = THREE.MathUtils.clamp(player.position.z, -maxDistance, maxDistance);
+
+  updateHumanoidAnimation(player, movementMagnitude > 0.01, dt);
+
+  npcs.forEach((npc) => {
+    const idle = Math.sin(performance.now() * 0.004 + npc.position.x) * 0.2;
+    updateHumanoidAnimation(npc, false, dt);
+    npc.userData.leftArm.rotation.x += idle * 0.01;
+    npc.userData.rightArm.rotation.x -= idle * 0.01;
+  });
 
   const desiredX = player.position.x + Math.sin(cameraYaw) * cameraDistance;
   const desiredY = player.position.y + Math.sin(cameraPitch) * cameraDistance * 0.9 + 5.5;
